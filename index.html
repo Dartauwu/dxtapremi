@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DxtaPremi - Pencatatan Premi Pekerja</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (XLSX) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=4">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="award"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Dxta<span>Premi</span></h1>
+                    <p>Sistem Pencatatan Premi Pekerja</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btn-add-employee-modal" class="btn-icon hidden" title="Tambah Pekerja Baru">
+                    <i data-lucide="user-plus"></i>
+                </button>
+                <button id="btn-theme-toggle" class="btn-icon" title="Ubah Tema">
+                    <i data-lucide="sun"></i>
+                </button>
+                <button id="btn-login-logout" class="btn-primary"
+                    style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                    <i data-lucide="log-in"></i>
+                    <span id="login-btn-text">Masuk</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard View -->
+        <main class="main-content">
+
+            <!-- Welcome Banner -->
+            <section class="welcome-banner">
+                <div class="banner-content">
+                    <h2>Selamat Datang di Portal Premi Pekerja</h2>
+                    <p>Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai pencatatan premi harian.
+                    </p>
+                </div>
+                <div class="banner-stats">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Record</span>
+                        <span class="stat-value" id="stat-total-records">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Total Premi Hari Ini</span>
+                        <span class="stat-value" id="stat-total-premi">Rp 0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Menu Utama / Cards -->
+            <section id="menu-utama" class="menu-grid">
+                <!-- Card 1 -->
+                <div class="menu-card" id="card-dump-truck">
+                    <div class="card-glow"></div>
+                    <div class="card-icon c-orange">
+                        <i data-lucide="truck"></i>
+                    </div>
+                    <h3>Loading Bak Mati / Dump Truck</h3>
+                    <p>Pencatatan premi untuk Supir Dump Truck dan para pekerja Pemuat (Loaders).</p>
+                    <div class="card-footer">
+                        <span>Buka Form</span>
+                        <i data-lucide="arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="menu-card" id="card-tractor">
+                    <div class="card-glow"></div>
+                    <div class="card-icon c-green">
+                        <i data-lucide="tractor"></i>
+                    </div>
+                    <h3>Loading Traktor / Operator</h3>
+                    <p>Pencatatan premi untuk Operator Traktor dan para pekerja Pemuat (Loaders).</p>
+                    <div class="card-footer">
+                        <span>Buka Form</span>
+                        <i data-lucide="arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="menu-card" id="card-ketek-brondolan">
+                    <div class="card-glow"></div>
+                    <div class="card-icon c-blue">
+                        <i data-lucide="droplet"></i>
+                    </div>
+                    <h3>Ketek Brondolan</h3>
+                    <p>Pencatatan premi pengumpul brondolan sawit.</p>
+                    <div class="card-footer">
+                        <span>Buka Form</span>
+                        <i data-lucide="arrow-right"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form Section (Hidden by Default) -->
+            <section id="form-section" class="form-container hidden">
+                <div class="form-header">
+                    <button id="btn-back-to-menu" class="btn-secondary">
+                        <i data-lucide="arrow-left"></i>
+                        <span>Kembali ke Menu</span>
+                    </button>
+                    <h2 id="form-title">Form Input Premi</h2>
+                </div>
+
+                <div class="form-grid">
+                    <!-- Form Input Fields -->
+                    <div class="form-card">
+                        <!-- Rate Settings Toggle -->
+                        <div class="settings-accordion">
+                            <button id="btn-toggle-rates" class="accordion-trigger">
+                                <span><i data-lucide="settings"></i> Pengaturan Tarif Premi (Rp)</span>
+                                <i data-lucide="chevron-down" class="chevron-icon"></i>
+                            </button>
+                            <div id="rates-settings-content" class="accordion-content hidden">
+                                <div class="rates-grid" id="rates-inputs-container">
+                                    <!-- Dynamic rates inputs based on active form -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="premi-input-form" autocomplete="off">
+                            <input type="hidden" id="active-category" value="">
+
+                            <!-- General Metadata -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="input-tanggal">Tanggal</label>
+                                    <input type="date" id="input-tanggal" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-divisi">Divisi / Blok</label>
+                                    <input type="text" id="input-divisi" placeholder="Contoh: Divisi A / OA05" required>
+                                </div>
+                                <div class="form-group" id="group-vehicle">
+                                    <label id="label-vehicle" for="input-vehicle">No. Polisi / Lambung</label>
+                                    <input type="text" id="input-vehicle" placeholder="Contoh: BK 1234 AB" required>
+                                </div>
+                                <div class="form-group" id="group-car-type">
+                                    <label for="input-car-type">Jenis Mobil</label>
+                                    <select id="input-car-type">
+                                        <option value="DUMP TRUCK" selected>DUMP TRUCK</option>
+                                        <option value="MOBIL KONTRAKTOR">MOBIL KONTRAKTOR</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Driver/Operator Section -->
+                            <div id="drivers-section">
+                                <div class="form-section-title d-flex justify-between">
+                                    <span id="title-driver-section">Data Supir / Operator</span>
+                                    <button type="button" id="btn-add-driver" class="btn-text">
+                                        <i data-lucide="plus-circle"></i> Tambah Supir / Operator
+                                    </button>
+                                </div>
+
+                                <div id="drivers-list-container">
+                                    <!-- Dynamic driver rows will be added here -->
+                                </div>
+
+                                <div class="form-row" style="margin-top: 1rem;">
+                                    <div class="form-group flex-1">
+                                        <label id="label-tonnage" for="input-tonnage">Total Tonase Kelompok
+                                            (Otomatis)</label>
+                                        <div class="input-with-suffix">
+                                            <input type="number" id="input-tonnage" step="0.001" min="0"
+                                                placeholder="0.000" disabled>
+                                            <span class="input-suffix" id="span-tonnage-unit">Ton</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Potongan HK (Dump Truck & Tractor only) -->
+                                <!-- Potongan Ton Supir (Dump Truck) / Potongan HK (Tractor) -->
+                                <div class="form-row hidden" id="group-potongan-hk" style="margin-top: 0.5rem;">
+                                    <div class="form-group flex-1">
+                                        <label for="input-potongan-hk" id="label-potongan-hk">Potongan Ton Supir
+                                            <small style="font-weight:400;color:var(--text-muted);" id="label-potongan-hk-sub">(Opsional — dikurangi dari tonase supir)</small>
+                                        </label>
+                                        <div class="input-with-suffix">
+                                            <input type="number" id="input-potongan-hk" step="0.001" min="0" placeholder="0.000">
+                                            <span class="input-suffix">Ton</span>
+                                        </div>
+                                        <div id="live-driver-calc" class="live-calc-info hidden"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Workers/Loaders Section -->
+                            <div class="form-section-title d-flex justify-between">
+                                <span id="title-loaders-section">Data Pekerja Pemuat</span>
+                                <button type="button" id="btn-add-loader" class="btn-text">
+                                    <i data-lucide="plus-circle"></i> Tambah Pemuat
+                                </button>
+                            </div>
+
+                            <div id="loaders-list-container">
+                                <!-- Dynamic loader rows will be added here -->
+                            </div>
+
+                            <!-- Tonase & Potongan Pemuat (Dump Truck only — terpisah dari Supir) -->
+                            <div id="group-tonase-pemuat" class="hidden" style="margin-top: 0.75rem;">
+                                <div class="form-section-divider" style="border-top: 1px dashed var(--border-color); padding-top: 0.75rem; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Tonase &amp; Potongan Pemuat (Terpisah dari Supir)</span>
+                                </div>
+                                <div class="form-row" style="gap: 0.75rem;">
+                                    <div class="form-group flex-1">
+                                        <label for="input-tonnage-pemuat" id="label-tonnage-pemuat">Tonase Pemuat
+                                            <small style="font-weight:400;color:var(--text-muted);">(Wajib diisi, terpisah dari supir)</small>
+                                        </label>
+                                        <div class="input-with-suffix">
+                                            <input type="number" id="input-tonnage-pemuat" step="0.001" min="0" placeholder="0.000">
+                                            <span class="input-suffix">Ton</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label for="input-potongan-pemuat" id="label-potongan-pemuat">Potongan Ton Pemuat
+                                            <small style="font-weight:400;color:var(--text-muted);">(Opsional)</small>
+                                        </label>
+                                        <div class="input-with-suffix">
+                                            <input type="number" id="input-potongan-pemuat" step="0.001" min="0" placeholder="0.000">
+                                            <span class="input-suffix">Ton</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="live-loader-calc" class="live-calc-info hidden" style="margin-top: 0.5rem;"></div>
+                            </div>
+                            <!-- Submit Area -->
+                            <div class="form-actions">
+                                <button type="button" id="btn-calculate" class="btn-secondary">Hitung Premi</button>
+                                <button type="submit" id="btn-save-record" class="btn-primary">
+                                    <i data-lucide="save"></i> Simpan Catatan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Live Calculator Summary Card -->
+                    <div class="calculator-preview-card">
+                        <h3>Simulasi Premi Aktif</h3>
+                        <p class="preview-subtitle">Hasil perhitungan sementara sebelum disimpan</p>
+
+                        <div id="preview-empty" class="preview-empty-state">
+                            <i data-lucide="calculator"></i>
+                            <p>Masukkan data dan klik "Hitung Premi" untuk melihat rincian di sini.</p>
+                        </div>
+
+                        <div id="preview-result" class="preview-result-container hidden">
+                            <div class="preview-meta">
+                                <div><strong>Kategori:</strong> <span id="prev-category">-</span></div>
+                                <div><strong>Tanggal:</strong> <span id="prev-date">-</span></div>
+                                <div><strong>Kendaraan:</strong> <span id="prev-vehicle">-</span></div>
+                            </div>
+
+                            <div class="preview-divider"></div>
+
+                            <h4 class="loaders-title" id="prev-drivers-title">Daftar Supir / Operator:</h4>
+                            <div id="preview-drivers-list" class="preview-loaders-list" style="margin-bottom: 1.25rem;">
+                                <!-- Dynamic driver preview rows -->
+                            </div>
+
+                            <div class="preview-divider"></div>
+
+                            <h4 class="loaders-title">Daftar Pemuat / Pengumpul:</h4>
+                            <div id="preview-loaders-list" class="preview-loaders-list">
+                                <!-- Dynamic loader preview rows -->
+                            </div>
+
+                            <div class="preview-divider"></div>
+
+                            <div class="preview-total-row">
+                                <span>TOTAL PREMI GRUP</span>
+                                <span class="total-amount" id="prev-total-amount">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section class="history-container">
+                <div class="history-header">
+                    <div class="history-title-area">
+                        <h2>Riwayat Pencatatan Hari Ini</h2>
+                        <p>Daftar pencatatan premi yang siap diekspor ke file Excel</p>
+                    </div>
+                    <div class="history-actions">
+                        <button id="btn-refresh-data" class="btn-secondary" title="Segarkan Data Online" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                            <i data-lucide="refresh-cw"></i> Segarkan
+                        </button>
+                        <button id="btn-clear-history" class="btn-danger-outline">
+                            <i data-lucide="trash-2"></i> Bersihkan Semua
+                        </button>
+                        <button id="btn-export-excel" class="btn-success">
+                            <i data-lucide="file-spreadsheet"></i>
+                            <span>Unduh Laporan Excel</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Tabs -->
+                <div class="history-tabs">
+                    <button class="tab-btn active" data-tab="tab-all">Semua Kategori</button>
+                    <button class="tab-btn" data-tab="tab-dump-truck">Dump Truck</button>
+                    <button class="tab-btn" data-tab="tab-tractor">Traktor</button>
+                    <button class="tab-btn" data-tab="tab-brondolan">Ketek Brondolan</button>
+                </div>
+
+                <!-- History Table Wrapper -->
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Tanggal</th>
+                                    <th>Kategori</th>
+                                    <th>Dicatat Oleh</th>
+                                    <th>Lokasi (Divisi/Blok)</th>
+                                    <th>Unit/Kendaraan</th>
+                                    <th>Pekerja & Peran</th>
+                                    <th>Hasil Kerja</th>
+                                    <th>Perhitungan Premi</th>
+                                    <th>Total Premi</th>
+                                    <th class="col-action">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <tr>
+                                    <td colspan="11" class="table-empty-state">
+                                        <i data-lucide="database"></i>
+                                        <p>Belum ada data yang disimpan. Silakan isi form di atas dan simpan.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal Tambah Pekerja Baru -->
+        <div id="modal-employee" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Tambah Pekerja Baru</h3>
+                    <button id="btn-close-modal" class="btn-close">&times;</button>
+                </div>
+                <form id="form-add-employee" autocomplete="off">
+                    <div class="form-group">
+                        <label for="new-emp-name">Nama Pekerja</label>
+                        <input type="text" id="new-emp-name" placeholder="Nama lengkap pekerja..." required
+                            style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="new-emp-nik">ID / NIK Pekerja</label>
+                        <input type="text" id="new-emp-nik" placeholder="Contoh: 0412A atau 0376I..." required
+                            style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="modal-actions"
+                        style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                        <button type="button" id="btn-cancel-modal" class="btn-secondary"
+                            style="padding: 0.5rem 1rem;">Batal</button>
+                        <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem;">
+                            <i data-lucide="user-plus"></i> Simpan Pekerja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Login -->
+        <div id="modal-login" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Masuk ke Sistem</h3>
+                    <button id="btn-close-login-modal" class="btn-close">&times;</button>
+                </div>
+                <form id="form-login" autocomplete="off">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" placeholder="Masukkan username..." required
+                            style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" placeholder="Masukkan password..." required
+                            style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="modal-actions"
+                        style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                        <button type="button" id="btn-cancel-login-modal" class="btn-secondary"
+                            style="padding: 0.5rem 1rem;">Batal</button>
+                        <button type="submit" class="btn-primary"
+                            style="padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i data-lucide="log-in"></i> Masuk
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden">
+            <span id="toast-message">Notifikasi</span>
+        </div>
+
+        <footer class="app-footer">
+            <p>&copy; 2026 DxtaPremi. Dibuat dengan presisi untuk pencatatan premi kelapa sawit.</p>
+        </footer>
+    </div>
+    <script src="app.js?v=4"></script>
+</body>
+
+</html>
