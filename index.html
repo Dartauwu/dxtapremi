@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DxtaPremi - Pencatatan Premi Pekerja</title>
+    <meta name="description" content="Sistem pencatatan premi pekerja kelapa sawit - DxtaPremi">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,14 +14,14 @@
         rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- SheetJS (XLSX) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=4">
+    <!-- SheetJS (XLSX) with Style Support -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
     <div class="app-container">
-        <!-- Sidebar / Header -->
+        <!-- Header -->
         <header class="app-header">
             <div class="logo-area">
                 <div class="logo-icon">
@@ -32,6 +33,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button id="btn-cek-penghasilan" class="btn-icon" title="Cek Total Penghasilan">
+                    <i data-lucide="wallet"></i>
+                </button>
                 <button id="btn-add-employee-modal" class="btn-icon hidden" title="Tambah Pekerja Baru">
                     <i data-lucide="user-plus"></i>
                 </button>
@@ -52,18 +56,61 @@
             <!-- Welcome Banner -->
             <section class="welcome-banner">
                 <div class="banner-content">
-                    <h2>Selamat Datang di Portal Premi Pekerja</h2>
-                    <p>Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai pencatatan premi harian.
-                    </p>
+                    <p class="banner-greeting">Selamat Datang di Portal</p>
+                    <h2>Premi Pekerja</h2>
+                    <p class="banner-desc">Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai pencatatan premi harian.</p>
                 </div>
-                <div class="banner-stats">
-                    <div class="stat-card">
+                <div class="banner-illustration">
+                    <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" class="banner-svg">
+                        <!-- Clipboard -->
+                        <rect x="35" y="20" width="90" height="120" rx="12" fill="rgba(30,60,80,0.85)" stroke="rgba(100,200,200,0.3)" stroke-width="2"/>
+                        <rect x="55" y="10" width="50" height="16" rx="8" fill="rgba(20,50,70,0.9)" stroke="rgba(100,200,200,0.3)" stroke-width="1.5"/>
+                        <!-- Check lines -->
+                        <circle cx="55" cy="55" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
+                        <polyline points="51,55 54,58 59,52" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="70" y="50" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
+                        <rect x="70" y="58" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+
+                        <circle cx="55" cy="80" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
+                        <polyline points="51,80 54,83 59,77" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="70" y="75" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
+                        <rect x="70" y="83" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+
+                        <circle cx="55" cy="105" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
+                        <polyline points="51,105 54,108 59,102" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="70" y="100" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
+                        <rect x="70" y="108" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+
+                        <!-- Shield overlay -->
+                        <g transform="translate(95, 85)">
+                            <circle cx="25" cy="25" r="25" fill="rgba(16,185,129,0.15)"/>
+                            <path d="M25 8 L40 16 L40 28 C40 36 33 42 25 45 C17 42 10 36 10 28 L10 16 Z" fill="rgba(16,185,129,0.3)" stroke="rgba(16,185,129,0.8)" stroke-width="1.5"/>
+                            <polyline points="19,26 23,30 31,22" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                    </svg>
+                </div>
+            </section>
+
+            <!-- Stats Row -->
+            <section class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-records">
+                        <i data-lucide="file-text"></i>
+                    </div>
+                    <div class="stat-info">
                         <span class="stat-label">Total Record</span>
                         <span class="stat-value" id="stat-total-records">0</span>
+                        <span class="stat-sublabel">Data Tercatat</span>
                     </div>
-                    <div class="stat-card">
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-premi">
+                        <span class="stat-icon-text">Rp</span>
+                    </div>
+                    <div class="stat-info">
                         <span class="stat-label">Total Premi Hari Ini</span>
                         <span class="stat-value" id="stat-total-premi">Rp 0</span>
+                        <span class="stat-sublabel">Total perolehan premi</span>
                     </div>
                 </div>
             </section>
@@ -77,7 +124,7 @@
                         <i data-lucide="truck"></i>
                     </div>
                     <h3>Loading Bak Mati / Dump Truck</h3>
-                    <p>Pencatatan premi untuk Supir Dump Truck dan para pekerja Pemuat (Loaders).</p>
+                    <p>Pencatatan premi untuk Supir Dump Truck dan para Pekerja Pemuat (Loaders).</p>
                     <div class="card-footer">
                         <span>Buka Form</span>
                         <i data-lucide="arrow-right"></i>
@@ -91,7 +138,7 @@
                         <i data-lucide="tractor"></i>
                     </div>
                     <h3>Loading Traktor / Operator</h3>
-                    <p>Pencatatan premi untuk Operator Traktor dan para pekerja Pemuat (Loaders).</p>
+                    <p>Pencatatan premi untuk Operator Traktor dan para Pekerja Pemuat (Loaders).</p>
                     <div class="card-footer">
                         <span>Buka Form</span>
                         <i data-lucide="arrow-right"></i>
@@ -105,7 +152,7 @@
                         <i data-lucide="droplet"></i>
                     </div>
                     <h3>Ketek Brondolan</h3>
-                    <p>Pencatatan premi pengumpul brondolan sawit.</p>
+                    <p>Pencatatan premi pengumpulan brondolan sawit.</p>
                     <div class="card-footer">
                         <span>Buka Form</span>
                         <i data-lucide="arrow-right"></i>
@@ -300,8 +347,15 @@
             <section class="history-container">
                 <div class="history-header">
                     <div class="history-title-area">
-                        <h2>Riwayat Pencatatan Hari Ini</h2>
-                        <p>Daftar pencatatan premi yang siap diekspor ke file Excel</p>
+                        <div class="history-title-row">
+                            <div class="history-title-icon">
+                                <i data-lucide="clock"></i>
+                            </div>
+                            <div>
+                                <h2>Riwayat Pencatatan Hari Ini</h2>
+                                <p>Daftar pencatatan premi yang siap diekspor ke file Excel</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="history-actions">
                         <button id="btn-refresh-data" class="btn-secondary" title="Segarkan Data Online" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
@@ -335,11 +389,11 @@
                                     <th>Tanggal</th>
                                     <th>Kategori</th>
                                     <th>Dicatat Oleh</th>
-                                    <th>Lokasi (Divisi/Blok)</th>
+                                    <th>Lokasi</th>
                                     <th>Unit/Kendaraan</th>
                                     <th>Pekerja & Peran</th>
                                     <th>Hasil Kerja</th>
-                                    <th>Perhitungan Premi</th>
+                                    <th>Premi</th>
                                     <th>Total Premi</th>
                                     <th class="col-action">Aksi</th>
                                 </tr>
@@ -352,6 +406,7 @@
                                     </td>
                                 </tr>
                             </tbody>
+
                         </table>
                     </div>
                 </div>
@@ -416,6 +471,50 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modal Cek Penghasilan -->
+        <div id="modal-cek-penghasilan" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Cek Penghasilan Pekerja</h3>
+                    <button id="btn-close-cek-modal" class="btn-close">&times;</button>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label for="input-cek-nama">Nama Pekerja</label>
+                        <div style="display: flex; gap: 0.5rem; position: relative;">
+                            <input type="text" id="input-cek-nama" placeholder="Masukkan nama..." autocomplete="off" style="flex: 1; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                            <div id="cek-nama-dropdown" class="autocomplete-dropdown hidden" style="position: absolute; top: 100%; left: 0; right: 90px; z-index: 10;"></div>
+                            <button id="btn-cek-cari" class="btn-primary" style="padding: 0 1rem;"><i data-lucide="search"></i> Cari</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="cek-result-container" class="hidden">
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Total Penghasilan Ditemukan</span>
+                        <div id="cek-total-amount" style="font-size: 1.8rem; font-weight: 800; color: var(--accent-teal); margin-top: 0.25rem;">Rp 0</div>
+                    </div>
+                    
+                    <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-muted); text-transform: uppercase;">Rincian Riwayat</h4>
+                    <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                            <thead style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                                <tr>
+                                    <th style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">Tanggal</th>
+                                    <th style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">Pekerjaan</th>
+                                    <th style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">Premi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cek-history-body">
+                                <!-- Data injected here -->
+                            </tbody>
+                        </table>
+                        <div id="cek-empty-state" class="hidden" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada data untuk pekerja ini.</div>
+                    </div>
+                </div>
             </div>
         </div>
 

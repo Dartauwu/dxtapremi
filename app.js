@@ -100,7 +100,8 @@ const state = {
 const CREDENTIALS = {
     "DARTA": "907612",
     "MATIUS": "091256",
-    "IRWAN": "891283"
+    "IRWAN": "891283",
+    "OWNER": "569716"
 };
 
 let currentUser = localStorage.getItem('dxtapremi_user') || null;
@@ -171,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initExcelExport();
     initEmployeeModal();
     initAuth();
+    initCekPenghasilan();
 
     // Bind refresh button
     const btnRefresh = document.getElementById('btn-refresh-data');
@@ -1466,7 +1468,7 @@ function renderHistoryTable() {
 
         let actionCellHTML = '';
         if (currentUser) {
-            if (rec.createdBy === currentUser) {
+            if (rec.createdBy === currentUser || currentUser === 'OWNER') {
                 actionCellHTML = `
                     <td>
                         <div class="action-btn-group">
@@ -1498,7 +1500,7 @@ function renderHistoryTable() {
             ${actionCellHTML}
         `;
 
-        if (currentUser && rec.createdBy === currentUser) {
+        if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
             // Bind Edit button
             const btnEdit = tr.querySelector('.btn-edit-row');
             if (btnEdit) {
@@ -1949,6 +1951,7 @@ function exportToExcel() {
         dtAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'ID', 'NAMA', 'TONASE LOADING TOTAL', 'POTONGAN', 'TON BERSIH', 'PREMI/TON', 'JML HK', 'HASIL/HK']);
 
         let dtNo = 1;
+        const kontraktorDriverRows = [];
         dtRecords.forEach(rec => {
             const recordStartRow = dtAOA.length;
             const dateStrFormatted = formatTanggalIndo(rec.date);
@@ -2006,6 +2009,7 @@ function exportToExcel() {
                         null,                                // JML HK
                         null                                 // HASIL/HK (tidak ada premi)
                     ]);
+                    kontraktorDriverRows.push(dtAOA.length - 1);
                 } else {
                     // DAM: tampilkan lengkap dengan premi
                     const potPerDriver = (totalDriverTon > 0 && potonganSupirVal > 0)
@@ -2080,6 +2084,16 @@ function exportToExcel() {
             { wch: 10 }, // J: JML HK
             { wch: 16 }, // K: HASIL/HK
         ];
+
+        // Highlight sel nama driver kontraktor dengan warna kuning
+        kontraktorDriverRows.forEach(r => {
+            const addr = XLSX.utils.encode_cell({ r: r, c: 4 }); // Kolom E (NAMA) index 4
+            if (wsDT[addr]) {
+                wsDT[addr].s = {
+                    fill: { fgColor: { rgb: "FFFFFF00" } }
+                };
+            }
+        });
 
         XLSX.utils.book_append_sheet(wb, wsDT, "Loading Dump Truck");
 
@@ -2853,3 +2867,158 @@ async function loadRecords(forceRefresh = false) {
     }
 }
 
+// Cek Penghasilan Modal Logic
+function initCekPenghasilan() {
+    const btnOpen = document.getElementById('btn-cek-penghasilan');
+    const btnClose = document.getElementById('btn-close-cek-modal');
+    const modal = document.getElementById('modal-cek-penghasilan');
+    const btnCari = document.getElementById('btn-cek-cari');
+    const inputNama = document.getElementById('input-cek-nama');
+    const resultContainer = document.getElementById('cek-result-container');
+    const totalAmount = document.getElementById('cek-total-amount');
+    const historyBody = document.getElementById('cek-history-body');
+    const emptyState = document.getElementById('cek-empty-state');
+    const dropdown = document.getElementById('cek-nama-dropdown');
+
+    if (!btnOpen || !modal) return;
+
+    // Autocomplete Logic
+    inputNama.addEventListener('input', (e) => {
+        const value = e.target.value.trim().toUpperCase();
+        if (!value) {
+            if (dropdown) {
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+            }
+            return;
+        }
+
+        // Kumpulkan semua nama dari EMPLOYEE_DB dan riwayat catatan (records)
+        const allNamesMap = new Map();
+        
+        // Dari EMPLOYEE_DB
+        EMPLOYEE_DB.forEach(emp => {
+            allNamesMap.set(emp.name.toUpperCase(), emp.nik);
+        });
+        
+        // Dari data riwayat yang sudah dicatat
+        state.records.forEach(rec => {
+            rec.drivers.forEach(d => {
+                if (d.name) allNamesMap.set(d.name.toUpperCase(), d.nik || '-');
+            });
+            rec.loaders.forEach(l => {
+                if (l.name) allNamesMap.set(l.name.toUpperCase(), l.nik || '-');
+            });
+        });
+
+        const combinedList = Array.from(allNamesMap, ([name, nik]) => ({ name, nik }));
+        const matches = combinedList.filter(emp => emp.name.includes(value));
+        
+        if (dropdown) {
+            renderDropdownItems(matches, dropdown, (selectedEmp) => {
+                inputNama.value = selectedEmp.name;
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+                performSearch(); // Auto-search
+            });
+        }
+    });
+
+    inputNama.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (dropdown) dropdown.classList.add('hidden');
+        }, 200);
+    });
+
+    btnOpen.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        inputNama.value = '';
+        resultContainer.classList.add('hidden');
+        setTimeout(() => inputNama.focus(), 100);
+    });
+
+    btnClose.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    const performSearch = () => {
+        const query = inputNama.value.trim().toLowerCase();
+        if (!query) {
+            showToast('Masukkan nama pekerja terlebih dahulu.', true);
+            return;
+        }
+
+        let total = 0;
+        const findings = [];
+
+        // Search in records
+        state.records.forEach(rec => {
+            // Check drivers
+            rec.drivers.forEach(driver => {
+                if (driver.name.toLowerCase().includes(query)) {
+                    total += driver.amount;
+                    let peran = rec.category === 'tractor' ? 'Operator' : 'Supir';
+                    let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
+                    findings.push({
+                        date: rec.date,
+                        job: `${jobLabel} (${peran})`,
+                        amount: driver.amount
+                    });
+                }
+            });
+            // Check loaders
+            rec.loaders.forEach(loader => {
+                if (loader.name.toLowerCase().includes(query)) {
+                    total += loader.amount;
+                    let peran = rec.category === 'brondolan' ? 'Pengumpul' : 'Pemuat';
+                    let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
+                    findings.push({
+                        date: rec.date,
+                        job: `${jobLabel} (${peran})`,
+                        amount: loader.amount
+                    });
+                }
+            });
+        });
+
+        // Sort findings by date descending
+        findings.sort((a, b) => b.date.localeCompare(a.date));
+
+        // Render results
+        resultContainer.classList.remove('hidden');
+        totalAmount.textContent = formatRupiah(total);
+        historyBody.innerHTML = '';
+
+        if (findings.length === 0) {
+            emptyState.classList.remove('hidden');
+            historyBody.parentElement.style.display = 'none';
+        } else {
+            emptyState.classList.add('hidden');
+            historyBody.parentElement.style.display = 'table';
+            
+            findings.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border-color)';
+                tr.innerHTML = `
+                    <td style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">${item.date}</td>
+                    <td style="padding: 0.5rem 0.75rem; font-weight: 500;">${item.job}</td>
+                    <td style="padding: 0.5rem 0.75rem; font-weight: 700; color: var(--accent-gold);">${formatRupiah(item.amount)}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+        }
+        lucide.createIcons();
+    };
+
+    btnCari.addEventListener('click', performSearch);
+    inputNama.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+}
