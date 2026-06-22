@@ -1373,22 +1373,30 @@ function renderHistoryTable() {
         // Output all drivers
         rec.drivers.forEach(driver => {
             const roleLabel = rec.category === 'tractor' ? 'OPER' : 'SUPIR';
+            const moneyInfo = ` <strong style="color:var(--primary-light); margin-left: 0.25rem;">(${formatRupiah(driver.amount)})</strong>`;
             workersCellHTML += `
                 <div class="wb-item">
                     <span class="wb-role driver">${roleLabel}</span>
                     <span class="wb-name">${driver.name}</span>
-                    <span class="wb-nik">${driver.nik}</span>
+                    <span class="wb-nik">${driver.nik}</span>${moneyInfo}
                 </div>
             `;
         });
 
         // Output all loaders
         rec.loaders.forEach(loader => {
+            const roleLabel = rec.category === 'brondolan' ? 'KTK' : 'PEMT';
+            let extraInfo = '';
+            if (rec.category === 'brondolan') {
+                extraInfo = ` <strong style="color:var(--accent-gold); margin-left: 0.25rem;">(${loader.kg} Kg)</strong>`;
+            } else {
+                extraInfo = ` <strong style="color:var(--primary-light); margin-left: 0.25rem;">(${formatRupiah(loader.amount)})</strong>`;
+            }
             workersCellHTML += `
                 <div class="wb-item">
-                    <span class="wb-role loader">PEMT</span>
+                    <span class="wb-role loader">${roleLabel}</span>
                     <span class="wb-name">${loader.name}</span>
-                    <span class="wb-nik">${loader.nik}</span>
+                    <span class="wb-nik">${loader.nik}</span>${extraInfo}
                 </div>
             `;
         });
@@ -1397,7 +1405,7 @@ function renderHistoryTable() {
         // Format results (Tonnage / Kg details)
         let resultDetail = '';
         if (rec.category === 'brondolan') {
-            resultDetail = `${rec.tonnage} Kg<br><small style="color:var(--text-muted)">(${rec.loaders.map(l => l.kg + ' Kg').join(', ')})</small>`;
+            resultDetail = `Total: ${rec.tonnage} Kg`;
         } else if (rec.category === 'dump-truck') {
             const isKontraktor = (rec.carType === 'MOBIL KONTRAKTOR');
             const totalDriverTon = rec.tonnage || 0;
@@ -1470,7 +1478,7 @@ function renderHistoryTable() {
         if (currentUser) {
             if (rec.createdBy === currentUser || currentUser === 'OWNER') {
                 actionCellHTML = `
-                    <td>
+                    <td data-label="Aksi">
                         <div class="action-btn-group">
                             <button type="button" class="btn-edit-row" title="Edit catatan ini">
                                 <i data-lucide="pencil"></i>
@@ -1482,21 +1490,21 @@ function renderHistoryTable() {
                     </td>
                 `;
             } else {
-                actionCellHTML = `<td></td>`;
+                actionCellHTML = `<td data-label="Aksi"></td>`;
             }
         }
 
         tr.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${rec.date}</td>
-            <td><span class="cat-badge ${catClassText}">${catLabelText}</span></td>
-            <td><span class="created-by-badge" style="font-size: 0.8rem; padding: 2px 6px; background: rgba(255,255,255,0.06); border-radius: 4px; display: inline-block; font-weight: 500;">${rec.createdBy || 'Public'}</span></td>
-            <td><strong>${rec.division}</strong></td>
-            <td>${vehicleTdHTML}</td>
-            <td>${workersCellHTML}</td>
-            <td><strong>${resultDetail}</strong></td>
-            <td style="font-size: 0.8rem; line-height: 1.3;">${formulaDetail}</td>
-            <td><strong style="color:var(--primary-light); font-size:1rem">${formatRupiah(rec.totalPremi)}</strong></td>
+            <td data-label="No">${index + 1}</td>
+            <td data-label="Tanggal">${rec.date}</td>
+            <td data-label="Kategori"><span class="cat-badge ${catClassText}">${catLabelText}</span></td>
+            <td data-label="Dicatat Oleh"><span class="created-by-badge" style="font-size: 0.8rem; padding: 2px 6px; background: rgba(255,255,255,0.06); border-radius: 4px; display: inline-block; font-weight: 500;">${rec.createdBy || 'Public'}</span></td>
+            <td data-label="Lokasi"><strong>${rec.division}</strong></td>
+            <td data-label="Unit/Kendaraan">${vehicleTdHTML}</td>
+            <td data-label="Pekerja & Peran">${workersCellHTML}</td>
+            <td data-label="Hasil Kerja"><strong>${resultDetail}</strong></td>
+            <td data-label="Premi" style="font-size: 0.8rem; line-height: 1.3;">${formulaDetail}</td>
+            <td data-label="Total Premi"><strong style="color:var(--primary-light); font-size:1rem">${formatRupiah(rec.totalPremi)}</strong></td>
             ${actionCellHTML}
         `;
 

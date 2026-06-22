@@ -2017,6 +2017,138 @@ input[readonly] {
     }
 }
 
+/* ── Tablet Portrait & Mobile Card Table (≤ 768px) ── */
+@media (max-width: 768px) {
+    .table-card {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+    
+    .table-responsive {
+        overflow-x: visible;
+    }
+    
+    .history-table {
+        min-width: 0 !important;
+        display: block;
+    }
+    
+    .history-table thead {
+        display: none;
+    }
+    
+    .history-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    
+    .history-table tr {
+        display: block;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+        box-shadow: var(--card-shadow);
+        position: relative;
+        transition: transform var(--transition-fast), border-color var(--transition-fast);
+    }
+    
+    .history-table tr:hover {
+        transform: translateY(-2px);
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .history-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+        text-align: right;
+        min-height: 2.5rem;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    
+    .history-table td:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .history-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-align: left;
+        margin-right: 1.5rem;
+        flex-shrink: 0;
+    }
+    
+    /* Specific overrides for cleaner design */
+    .history-table td[data-label="No"] {
+        background: rgba(255, 255, 255, 0.03);
+        margin: -1.25rem -1.25rem 0.75rem -1.25rem;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        border-top-left-radius: calc(var(--radius-lg) - 1px);
+        border-top-right-radius: calc(var(--radius-lg) - 1px);
+        font-weight: 700;
+        color: var(--text-primary);
+        width: auto !important;
+    }
+    
+    .light-theme .history-table td[data-label="No"] {
+        background: rgba(0, 0, 0, 0.02);
+    }
+    
+    /* Center the actions row */
+    .history-table td[data-label="Aksi"] {
+        justify-content: center;
+        padding-top: 1rem;
+        border-bottom: none;
+    }
+    
+    .history-table td[data-label="Aksi"]::before {
+        display: none;
+    }
+    
+    /* Avoid label styling on empty state row */
+    .history-table td.table-empty-state {
+        display: block;
+        text-align: center;
+        width: 100% !important;
+        border: none;
+        padding: 3rem 1rem !important;
+    }
+    
+    .history-table td.table-empty-state::before {
+        display: none;
+    }
+    
+    /* Light theme card design adjustments */
+    .light-theme .history-table tr {
+        background: var(--bg-primary);
+        border-color: rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    
+    .light-theme .history-table tr:hover {
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    
+    .light-theme .history-table td {
+        border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+    }
+    
+    .light-theme .history-table td:last-child {
+        border-bottom: none;
+    }
+}
+
 /* ── Mobile (≤ 480px) ── */
 @media (max-width: 480px) {
     .app-container {
@@ -2144,17 +2276,7 @@ input[readonly] {
 
     /* Table */
     .history-table {
-        min-width: 600px;
         font-size: 0.78rem;
-    }
-
-    .history-table th {
-        font-size: 0.68rem;
-        padding: 0.6rem 0.75rem;
-    }
-
-    .history-table td {
-        padding: 0.65rem 0.75rem;
     }
 
     /* History */
@@ -2250,7 +2372,6 @@ input[readonly] {
     }
 
     .history-table {
-        min-width: 520px;
         font-size: 0.75rem;
     }
 
