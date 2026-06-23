@@ -122,6 +122,18 @@ function getLocalToday() {
 
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
+    // Auto uppercase for all text inputs
+    document.addEventListener('input', (e) => {
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) {
+            const start = e.target.selectionStart;
+            const end = e.target.selectionEnd;
+            e.target.value = e.target.value.toUpperCase();
+            if (start !== null) {
+                e.target.setSelectionRange(start, end);
+            }
+        }
+    });
+
     // Load custom employees from localStorage first (fast), then sync with Supabase
     loadCustomEmployees();
 
@@ -590,7 +602,11 @@ function calculateTotalDriverTonnage() {
     const tonnageInputs = document.querySelectorAll('.driver-tonnage');
     let total = 0;
     tonnageInputs.forEach(input => {
-        total += parseFloat(input.value) || 0;
+        let val = parseFloat(input.value) || 0;
+        if (state.activeCategory === 'dump-truck' && val > 100) {
+            val = val / 1000;
+        }
+        total += val;
     });
     document.getElementById('input-tonnage').value = Number(total.toFixed(3));
     updateLiveCalculations();
@@ -888,7 +904,10 @@ function updateLiveCalculations() {
         }
 
         // Loader live calculation
-        const tonasePemuat = parseFloat(document.getElementById('input-tonnage-pemuat').value) || 0;
+        let tonasePemuat = parseFloat(document.getElementById('input-tonnage-pemuat').value) || 0;
+        if (tonasePemuat > 100) {
+            tonasePemuat = tonasePemuat / 1000;
+        }
         const potonganHK = parseFloat(document.getElementById('input-potongan-pemuat').value) || 0;
         const loaderEff = Math.max(0, tonasePemuat - potonganHK);
         const loaderCount = document.querySelectorAll('#loaders-list-container .loader-row').length || 1;
@@ -956,6 +975,9 @@ function calculateCurrentPremi() {
 
             if (category === 'dump-truck') {
                 dTonnage = parseFloat(row.querySelector('.driver-tonnage').value) || 0;
+                if (dTonnage > 100) {
+                    dTonnage = dTonnage / 1000;
+                }
             } else if (category === 'tractor') {
                 const fieldSel = row.querySelector('.tractor-field');
                 dField = fieldSel ? fieldSel.value : '';
@@ -1041,7 +1063,10 @@ function calculateCurrentPremi() {
     // Untuk dump-truck: baca juga Tonase Pemuat & Potongan Pemuat terpisah
     const tonasePemuatEl = document.getElementById('input-tonnage-pemuat');
     const potonganPemuatEl = document.getElementById('input-potongan-pemuat');
-    const tonasePemuat = (category === 'dump-truck' && tonasePemuatEl) ? (parseFloat(tonasePemuatEl.value) || 0) : 0;
+    let tonasePemuat = (category === 'dump-truck' && tonasePemuatEl) ? (parseFloat(tonasePemuatEl.value) || 0) : 0;
+    if (category === 'dump-truck' && tonasePemuat > 100) {
+        tonasePemuat = tonasePemuat / 1000;
+    }
     const potonganPemuat = (category === 'dump-truck' && potonganPemuatEl) ? (parseFloat(potonganPemuatEl.value) || 0) : 0;
 
     if (category === 'dump-truck' || category === 'tractor') {
@@ -1793,6 +1818,13 @@ function initHistoryTabs() {
             return;
         }
 
+        const passwordInput = prompt(`Masukkan password untuk akun ${currentUser} untuk menghapus semua catatan:`);
+        if (passwordInput === null) return;
+        if (passwordInput.trim() !== CREDENTIALS[currentUser]) {
+            showToast('Password salah! Gagal menghapus catatan.', true);
+            return;
+        }
+
         if (confirm(`Apakah Anda yakin ingin menghapus seluruh data pencatatan yang dibuat oleh ${currentUser}? Tindakan ini tidak dapat dibatalkan.`)) {
             state.records = state.records.filter(r => r.createdBy !== currentUser);
             saveLocalRecords();
@@ -1817,11 +1849,47 @@ function initHistoryTabs() {
 
 // Update App stats banner
 function updateStats() {
+    const today = getLocalToday();
+    const todayRecords = state.records.filter(r => r.date === today);
+    
+    const todayRecordsCount = todayRecords.length;
+    const todayPremi = todayRecords.reduce((acc, curr) => acc + curr.totalPremi, 0);
+
     const totalRecords = state.records.length;
     const totalPremi = state.records.reduce((acc, curr) => acc + curr.totalPremi, 0);
 
-    document.getElementById('stat-total-records').textContent = totalRecords;
-    document.getElementById('stat-total-premi').textContent = formatRupiah(totalPremi);
+    let dateRangeStr = 'Belum ada data';
+    if (state.records.length > 0) {
+        const dates = state.records.map(r => r.date).sort();
+        const oldestDate = dates[0];
+        const newestDate = dates[dates.length - 1];
+        
+        const formatDateStr = (d) => {
+            if (!d) return '';
+            const p = d.split('-');
+            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+            return d;
+        };
+        
+        if (oldestDate === newestDate) {
+            dateRangeStr = `dari ${formatDateStr(oldestDate)}`;
+        } else {
+            dateRangeStr = `dari ${formatDateStr(oldestDate)} - ${formatDateStr(newestDate)}`;
+        }
+    }
+
+    document.getElementById('stat-total-records').textContent = todayRecordsCount;
+    document.getElementById('stat-total-premi').textContent = formatRupiah(todayPremi);
+    
+    const elSubRecords = document.getElementById('stat-sub-records');
+    if (elSubRecords) {
+        elSubRecords.textContent = `Total ${totalRecords} data (${dateRangeStr})`;
+    }
+    
+    const elSubPremi = document.getElementById('stat-sub-premi');
+    if (elSubPremi) {
+        elSubPremi.textContent = `Total ${dateRangeStr}: ${formatRupiah(totalPremi)}`;
+    }
 }
 
 // LocalStorage helpers
