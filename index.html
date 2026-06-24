@@ -233,6 +233,22 @@
                                     <!-- Dynamic driver rows will be added here -->
                                 </div>
 
+                                <div class="form-row hidden" id="group-tractor-calc" style="margin-top: 1rem; gap: 0.75rem;">
+                                    <div class="form-group flex-1">
+                                        <label for="main-tractor-field">Field / Afdeling</label>
+                                        <select id="main-tractor-field">
+                                            <option value="" disabled selected>Pilih Field</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <label for="main-tractor-janjang">Jml Janjang</label>
+                                        <input type="number" id="main-tractor-janjang" min="0" placeholder="0">
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <label>BJR (Kg)</label>
+                                        <input type="number" id="main-tractor-bjr" step="0.01" min="0" placeholder="0.00" readonly style="background:var(--bg-secondary);color:var(--text-muted)">
+                                    </div>
+                                </div>
                                 <div class="form-row" style="margin-top: 1rem;">
                                     <div class="form-group flex-1">
                                         <label id="label-tonnage" for="input-tonnage">Total Tonase Kelompok

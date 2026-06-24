@@ -363,6 +363,37 @@ function customizeFormUI(category) {
                 <input type="number" id="rate-loader" value="${ratesObj.loader}" min="0">
             </div>
         `;
+        // Show group tractor calc
+        const gtc = document.getElementById('group-tractor-calc');
+        if (gtc) {
+            gtc.classList.remove('hidden');
+            const fieldSelect = document.getElementById('main-tractor-field');
+            if (fieldSelect.options.length <= 1) {
+                const fieldOptions = FIELD_BJR.map(f =>
+                    `<option value="${f.field}" data-bjr="${f.bjr}">${f.field} (BJR: ${f.bjr} Kg)</option>`
+                ).join('');
+                fieldSelect.innerHTML = `<option value="" disabled selected>Pilih Field</option>${fieldOptions}`;
+                
+                // Add event listeners for calc
+                const janjangInput = document.getElementById('main-tractor-janjang');
+                const bjrInput = document.getElementById('main-tractor-bjr');
+                const tonInput = document.getElementById('input-tonnage');
+                
+                const calcTractorTonnage = () => {
+                    const selectedOption = fieldSelect.options[fieldSelect.selectedIndex];
+                    const bjr = parseFloat(selectedOption ? selectedOption.getAttribute('data-bjr') : 0) || 0;
+                    const janjang = parseFloat(janjangInput.value) || 0;
+                    bjrInput.value = bjr.toFixed(2);
+                    const tonase = (janjang * bjr) / 1000;
+                    tonInput.value = tonase.toFixed(3);
+                    updateLiveCalculations();
+                };
+                
+                fieldSelect.addEventListener('change', calcTractorTonnage);
+                janjangInput.addEventListener('input', calcTractorTonnage);
+            }
+        }
+        
         // Show Potongan HK; tonnage editable (operators optional)
         const gpHK2 = document.getElementById('group-potongan-hk');
         if (gpHK2) gpHK2.classList.remove('hidden');
@@ -478,6 +509,20 @@ function resetFormInputs() {
         liveLoader.innerHTML = '';
         liveLoader.classList.add('hidden');
     }
+    
+    // Hide and reset group-tractor-calc
+    const gtc = document.getElementById('group-tractor-calc');
+    if (gtc) {
+        if (state.activeCategory !== 'tractor') {
+            gtc.classList.add('hidden');
+        }
+        const fieldSelect = document.getElementById('main-tractor-field');
+        if (fieldSelect) fieldSelect.value = '';
+        const janjangInput = document.getElementById('main-tractor-janjang');
+        if (janjangInput) janjangInput.value = '';
+        const bjrInput = document.getElementById('main-tractor-bjr');
+        if (bjrInput) bjrInput.value = '';
+    }
 }
 
 // Reset preview card
@@ -515,31 +560,7 @@ function addDriverRow() {
             </div>
         `;
     } else if (category === 'tractor') {
-        // Build field options
-        const fieldOptions = FIELD_BJR.map(f =>
-            `<option value="${f.field}" data-bjr="${f.bjr}">${f.field} (BJR: ${f.bjr} Kg)</option>`
-        ).join('');
-        tonnageInputHTML = `
-            <div class="form-group flex-1">
-                <label>Field / Afdeling</label>
-                <select class="tractor-field">
-                    <option value="" disabled selected>Pilih Field</option>
-                    ${fieldOptions}
-                </select>
-            </div>
-            <div class="form-group" style="min-width:110px">
-                <label>Jml Janjang</label>
-                <input type="number" class="tractor-janjang" min="0" placeholder="0" required>
-            </div>
-            <div class="form-group" style="min-width:90px">
-                <label>BJR (Kg)</label>
-                <input type="number" class="tractor-bjr" step="0.01" min="0" placeholder="0.00" readonly style="background:var(--bg-secondary);color:var(--text-muted)">
-            </div>
-            <div class="form-group" style="min-width:110px">
-                <label>Tonase (Ton)</label>
-                <input type="number" class="driver-tonnage" step="0.001" min="0" placeholder="0.000" readonly style="background:var(--bg-secondary);color:var(--text-muted)">
-            </div>
-        `;
+        tonnageInputHTML = ``; // No individual tonnage inputs for tractor operators
     }
 
     const roleLabel = category === 'tractor' ? 'Operator' : 'Supir';
@@ -576,26 +597,7 @@ function addDriverRow() {
         });
     }
 
-    // If tractor, bind field select + janjang to compute bjr & tonnage
-    if (category === 'tractor') {
-        const fieldSelect = row.querySelector('.tractor-field');
-        const janjangInput = row.querySelector('.tractor-janjang');
-        const bjrInput = row.querySelector('.tractor-bjr');
-        const tonInput = row.querySelector('.driver-tonnage');
-
-        function updateTractorRowTonnage() {
-            const selectedOption = fieldSelect.options[fieldSelect.selectedIndex];
-            const bjr = parseFloat(selectedOption ? selectedOption.getAttribute('data-bjr') : 0) || 0;
-            const janjang = parseFloat(janjangInput.value) || 0;
-            bjrInput.value = bjr.toFixed(2);
-            const tonase = (janjang * bjr) / 1000;
-            tonInput.value = tonase.toFixed(3);
-            calculateTotalDriverTonnage();
-        }
-
-        fieldSelect.addEventListener('change', updateTractorRowTonnage);
-        janjangInput.addEventListener('input', updateTractorRowTonnage);
-    }
+    // If tractor, no individual events needed for tonnage since it's removed
 }
 
 function calculateTotalDriverTonnage() {
@@ -969,34 +971,16 @@ function calculateCurrentPremi() {
             }
 
             let dTonnage = 0;
-            let dField = '';
-            let dJanjang = 0;
-            let dBjr = 0;
-
             if (category === 'dump-truck') {
                 dTonnage = parseFloat(row.querySelector('.driver-tonnage').value) || 0;
                 if (dTonnage > 100) {
                     dTonnage = dTonnage / 1000;
-                }
-            } else if (category === 'tractor') {
-                const fieldSel = row.querySelector('.tractor-field');
-                dField = fieldSel ? fieldSel.value : '';
-                dJanjang = parseFloat(row.querySelector('.tractor-janjang').value) || 0;
-                dBjr = parseFloat(row.querySelector('.tractor-bjr').value) || 0;
-                dTonnage = parseFloat(row.querySelector('.driver-tonnage').value) || 0;
-
-                if (!dField || dJanjang <= 0) {
-                    isDriversValid = false;
-                    return;
                 }
             }
 
             driversList.push({
                 name: dName,
                 nik: dNik,
-                field: dField,
-                janjang: dJanjang,
-                bjr: dBjr,
                 tonnage: dTonnage,
                 amount: 0
             });
@@ -1069,20 +1053,28 @@ function calculateCurrentPremi() {
     }
     const potonganPemuat = (category === 'dump-truck' && potonganPemuatEl) ? (parseFloat(potonganPemuatEl.value) || 0) : 0;
 
-    if (category === 'dump-truck' || category === 'tractor') {
+    let tractorField = '';
+    let tractorJanjang = 0;
+
+    if (category === 'dump-truck') {
         if (driversList.length > 0) {
             // Auto-hitung dari driver rows
             totalTonnage = driversList.reduce((acc, curr) => acc + curr.tonnage, 0);
-        } else {
-            // Tractor tanpa operator: pakai input manual
-            totalTonnage = parseFloat(document.getElementById('input-tonnage').value) || 0;
-            if (totalTonnage <= 0) {
-                showToast('Masukkan total tonase untuk loading traktor (tanpa operator).', true);
-                return null;
-            }
         }
-
-        if (category === 'dump-truck') {
+    } else if (category === 'tractor') {
+        totalTonnage = parseFloat(document.getElementById('input-tonnage').value) || 0;
+        const tf = document.getElementById('main-tractor-field');
+        if (tf) tractorField = tf.value;
+        const tj = document.getElementById('main-tractor-janjang');
+        if (tj) tractorJanjang = parseFloat(tj.value) || 0;
+        
+        if (totalTonnage <= 0) {
+            showToast('Masukkan field dan jumlah janjang untuk mendapatkan total tonase traktor.', true);
+            return null;
+        }
+    }
+    
+    if (category === 'dump-truck') {
             // === SUPIR: efektif tonase setelah potongan supir (proporsional per supir) ===
             const potonganSupir = potonganHK; // input-potongan-hk dipakai utk supir di dump-truck
             driversList.forEach(driver => {
@@ -1103,20 +1095,19 @@ function calculateCurrentPremi() {
                 const perLoaderAmount = Math.round(effectiveTonasePemuat * rates.loader / loadersList.length);
                 loadersList.forEach(loader => { loader.amount = perLoaderAmount; });
             }
-        } else {
+        } else if (category === 'tractor') {
             // === TRACTOR: tonase tunggal (pakai potonganHK untuk pemuat) ===
             const effectiveTonnage = Math.max(0, totalTonnage - potonganHK);
 
-            // Premi supir/operator berdasarkan tonase penuh masing-masing
+            // Premi supir/operator berdasarkan tonase grup (sama rata atau penuh)
             driversList.forEach(driver => {
-                driver.amount = Math.round(driver.tonnage * rates.driver);
+                driver.amount = Math.round(totalTonnage * rates.driver); // asumsikan operator dapat premi full berdasarkan tonase traktor
             });
 
             // Premi pemuat berdasarkan effectiveTonnage
             const perLoaderAmount = Math.round(effectiveTonnage * rates.loader / loadersList.length);
             loadersList.forEach(loader => { loader.amount = perLoaderAmount; });
-        }
-    } else if (category === 'brondolan') {
+        } else if (category === 'brondolan') {
         // Each worker: kg × Rp per KG
         let totalKg = 0;
         loadersList.forEach(loader => {
@@ -1137,6 +1128,8 @@ function calculateCurrentPremi() {
         division,
         vehicle,
         carType,
+        tractorField,
+        tractorJanjang,
         tonnage: totalTonnage,
         tonnagePemuat: category === 'dump-truck' ? tonasePemuat : totalTonnage,
         potonganHK: category === 'dump-truck' ? potonganHK : potonganHK, // potonganHK = supir for DT, general for tractor
@@ -1275,7 +1268,7 @@ function updatePreviewUI(data) {
                     }
                 }
             } else if (data.category === 'tractor') {
-                extraInfo = `<br><small style="color:var(--text-muted)">Field: ${driver.field || '-'} | ${driver.janjang || 0} Janjang × ${driver.bjr || 0} Kg = ${driver.tonnage} Ton</small>`;
+                extraInfo = `<br><small style="color:var(--text-muted)">Field: ${data.tractorField} | Janjang: ${data.tractorJanjang}</small>`;
             }
             infoDiv.innerHTML = `
                 <span class="preview-loader-name">${driver.name}</span>
@@ -1458,7 +1451,8 @@ function renderHistoryTable() {
 
             resultDetail = `
                 <div style="margin-bottom:4px;">
-                    <strong>Operator:</strong> ${totalDriverTon.toFixed(3)}T
+                    <strong>Operator:</strong> ${totalDriverTon.toFixed(3)}T 
+                    <small style="color:var(--text-muted)">(Field: ${rec.tractorField || '-'} | ${rec.tractorJanjang || 0} Janjang)</small>
                 </div>
                 <div>
                     <strong>Pemuat:</strong> ${totalDriverTon.toFixed(3)}T 
