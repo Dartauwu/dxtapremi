@@ -308,6 +308,57 @@ function loadBannerImages() {
         }
     }
     renderBanner();
+    loadBannerFromSupabase();
+}
+
+async function loadBannerFromSupabase() {
+    if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return;
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_settings?key=eq.banner_images&select=value`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const remoteBanners = data[0].value;
+                if (Array.isArray(remoteBanners)) {
+                    bannerImages = remoteBanners;
+                    localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
+                    renderBanner();
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Gagal load banner dari Supabase:', err);
+    }
+}
+
+async function syncBannerToSupabase() {
+    if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return;
+    try {
+        const payload = {
+            key: 'banner_images',
+            value: bannerImages
+        };
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_settings`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            console.error('Gagal sinkron banner ke Supabase:', await response.text());
+        }
+    } catch (err) {
+        console.error('Gagal sinkron banner ke Supabase:', err);
+    }
 }
 
 function renderBanner() {
@@ -414,6 +465,7 @@ function initBannerUploader() {
                             try {
                                 localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
                                 renderBanner();
+                                syncBannerToSupabase();
                                 showToast(`${limitedFiles.length} foto background berhasil disimpan.`);
                             } catch(err) {
                                 showToast('Gagal menyimpan foto. Coba unggah ukuran yang lebih kecil.', true);
@@ -434,6 +486,7 @@ function initBannerUploader() {
                 bannerImages = [];
                 localStorage.removeItem('dxtapremi_banner_bgs');
                 renderBanner();
+                syncBannerToSupabase();
                 showToast('Foto background berhasil dihapus.');
             }
         });
