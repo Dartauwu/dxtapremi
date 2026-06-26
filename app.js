@@ -94,8 +94,174 @@ const state = {
             kg: 250    // Rp per KG per Pekerja
         }
     },
-    activeTab: 'tab-all'
+    activeTab: 'tab-all',
+    activePeriodIndex: 0,   // 0 = periode saat ini, 1 = sebelumnya, dst.
+    activeCekPeriodIndex: 0 // Untuk modal Cek Penghasilan
 };
+
+// =============================================
+// PERIOD HELPERS
+// =============================================
+
+// getPeriodDates(index): index 0 = periode sekarang, 1 = sebelumnya, dst.
+// Periode: dari tanggal 26 bulan X sampai tanggal 25 bulan X+1
+function getPeriodDates(index) {
+    index = index || 0;
+    const today = new Date();
+    const d = today.getDate();
+    let m = today.getMonth(); // 0-indexed
+    let y = today.getFullYear();
+
+    // Tentukan bulan/tahun mulai periode paling baru (index 0)
+    let currentStartMonth, currentStartYear;
+    if (d >= 26) {
+        currentStartMonth = m;
+        currentStartYear  = y;
+    } else {
+        // Sebelum tanggal 26, periode ini masih dimulai dari bulan lalu
+        currentStartMonth = m === 0 ? 11 : m - 1;
+        currentStartYear  = m === 0 ? y - 1 : y;
+    }
+
+    // Mundur 'index' bulan dari periode paling baru
+    let startMonth = currentStartMonth - index;
+    let startYear  = currentStartYear;
+    while (startMonth < 0) { startMonth += 12; startYear--; }
+    while (startMonth > 11) { startMonth -= 12; startYear++; }
+
+    // End: tanggal 25 bulan berikutnya
+    let endMonth = startMonth + 1;
+    let endYear  = startYear;
+    if (endMonth > 11) { endMonth = 0; endYear++; }
+
+    return {
+        start: new Date(startYear, startMonth, 26),
+        end:   new Date(endYear, endMonth, 25)
+    };
+}
+
+// Format period dates as "26 Jun 2026 – 25 Jul 2026"
+function formatPeriodLabel(index) {
+    index = index || 0;
+    const { start, end } = getPeriodDates(index);
+    const opts = { day: 'numeric', month: 'short', year: 'numeric' };
+    return `${start.toLocaleDateString('id-ID', opts)} – ${end.toLocaleDateString('id-ID', opts)}`;
+}
+
+// Generate list of periods from Mei 2026 up to current period
+function generatePeriodList() {
+    const list = [];
+    const today = new Date();
+    const d = today.getDate();
+    const m = today.getMonth(); // 0-indexed
+    const y = today.getFullYear();
+    
+    let currentStartMonth = (d >= 26) ? m : (m === 0 ? 11 : m - 1);
+    let currentStartYear = (d >= 26) ? y : (m === 0 ? y - 1 : y);
+    
+    // Hitung index untuk Mei 2026 (bulan 4)
+    let monthsFromMay2026 = (currentStartYear - 2026) * 12 + (currentStartMonth - 4);
+    
+    let startIndex = monthsFromMay2026;
+    let endIndex = 0; // Hanya sampai periode ini
+    
+    let periodNumber = 1;
+    for (let i = startIndex; i >= endIndex; i--) {
+        list.push({ 
+            index: i, 
+            label: formatPeriodLabel(i),
+            title: `Periode ${periodNumber}`
+        });
+        periodNumber++;
+    }
+    return list;
+}
+
+// Open a floating period picker dropdown near anchorEl
+// selectedIndex = currently active index
+// onSelect(index) called when user picks a period
+function openPeriodPicker(anchorEl, selectedIndex, onSelect) {
+    // Remove any existing picker
+    const existing = document.getElementById('__period-picker-dropdown');
+    if (existing) existing.remove();
+
+    const periods = generatePeriodList(12);
+    const dropdown = document.createElement('div');
+    dropdown.id = '__period-picker-dropdown';
+    dropdown.style.cssText = `
+        position: fixed;
+        z-index: 9999;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm, 6px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        min-width: 200px;
+        overflow-y: auto;
+    `;
+
+    periods.forEach(p => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.textContent = `${p.title}: ${p.label}`;
+        item.style.cssText = `
+            width: 100%;
+            text-align: left;
+            padding: 0.45rem 0.75rem;
+            border: none;
+            background: ${p.index === selectedIndex ? 'var(--accent-teal)' : 'transparent'};
+            color: ${p.index === selectedIndex ? '#fff' : 'var(--text-primary)'};
+            font-size: 0.8rem;
+            font-weight: ${p.index === selectedIndex ? '600' : '500'};
+            cursor: pointer;
+            border-radius: 0;
+            transition: background 0.15s;
+        `;
+        item.addEventListener('mouseenter', () => {
+            if (p.index !== selectedIndex) item.style.background = 'rgba(255,255,255,0.06)';
+        });
+        item.addEventListener('mouseleave', () => {
+            if (p.index !== selectedIndex) item.style.background = 'transparent';
+        });
+        item.addEventListener('click', () => {
+            dropdown.remove();
+            document.removeEventListener('click', outsideClick, true);
+            onSelect(p.index);
+        });
+        dropdown.appendChild(item);
+    });
+
+    document.body.appendChild(dropdown);
+
+    // Position it below the anchor flexibly
+    const rect = anchorEl.getBoundingClientRect();
+    let top = rect.bottom + 6;
+    let left = rect.left;
+    // Keep inside viewport horizontally
+    if (left + 250 > window.innerWidth) left = window.innerWidth - 256;
+    
+    // Limit height to available space below the button to ensure it always opens downwards
+    let availableHeight = window.innerHeight - rect.bottom - 20;
+    if (availableHeight < 150) availableHeight = 150; // Minimum scrollable height
+    
+    dropdown.style.maxHeight = availableHeight + 'px';
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+
+    // Close on outside click
+    const outsideClick = (e) => {
+        if (!dropdown.contains(e.target) && e.target !== anchorEl) {
+            dropdown.remove();
+            document.removeEventListener('click', outsideClick, true);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClick, true), 10);
+}
+
+// Update the period label text in the history section button
+function updatePeriodLabel() {
+    const label = document.getElementById('history-period-label');
+    if (label) label.textContent = formatPeriodLabel(state.activePeriodIndex);
+}
 
 const CREDENTIALS = {
     "DARTA": "907612",
@@ -112,16 +278,173 @@ const SUPABASE_URL = "https://amvscipdfgtmfftegwqh.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtdnNjaXBkZmd0bWZmdGVnd3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODE0NzUsImV4cCI6MjA5Njc1NzQ3NX0.rtgIbwp6jCiPAY8CszG6LA5uircFrgLssWCRDUBR02c";
 
 // Helper to get local date string YYYY-MM-DD
+// Memiliki batas cut-off jam 14:00 (2 siang). Sebelum jam 2 siang, dianggap masih hari sebelumnya.
 function getLocalToday() {
     const now = new Date();
+    if (now.getHours() < 14) {
+        now.setDate(now.getDate() - 1);
+    }
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
+
+
+// --- Banner Slideshow Logic ---
+let bannerImages = [];
+let currentBannerIndex = 0;
+let bannerInterval = null;
+let isBannerPaused = false;
+
+function loadBannerImages() {
+    const saved = localStorage.getItem('dxtapremi_banner_bgs');
+    if (saved) {
+        try {
+            bannerImages = JSON.parse(saved);
+        } catch (e) {
+            bannerImages = [];
+        }
+    }
+    renderBanner();
+}
+
+function renderBanner() {
+    const track = document.getElementById('banner-slideshow-track');
+    const overlay = document.getElementById('banner-overlay');
+    if (!track || !overlay) return;
+
+    if (bannerImages.length === 0) {
+        track.innerHTML = '';
+        track.style.transform = 'translateX(0)';
+        overlay.style.display = 'none';
+        if (bannerInterval) {
+            clearInterval(bannerInterval);
+            bannerInterval = null;
+        }
+        return;
+    }
+
+    overlay.style.display = 'block';
+
+    track.innerHTML = bannerImages.map((b64) => `
+        <div class="banner-slide" style="flex: 0 0 100%; height: 100%; background-image: url('${b64}'); background-size: cover; background-repeat: no-repeat; background-position: center;"></div>
+    `).join('');
+
+    // Toggle pause on click
+    overlay.onclick = () => {
+        if (bannerImages.length > 1) {
+            isBannerPaused = !isBannerPaused;
+            showToast(isBannerPaused ? 'Slideshow dijeda (klik untuk melanjutkan)' : 'Slideshow dilanjutkan');
+        }
+    };
+    
+    if (bannerImages.length > 1) {
+        currentBannerIndex = 0;
+        track.style.transform = `translateX(0%)`;
+        
+        bannerInterval = setInterval(() => {
+            if (isBannerPaused) return;
+            currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
+            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+        }, 5000); // Geser tiap 5 detik
+    } else {
+        track.style.transform = `translateX(0%)`;
+    }
+}
+
+function initBannerUploader() {
+    const uploadInput = document.getElementById('banner-upload');
+    const btnClear = document.getElementById('btn-banner-clear');
+
+    if (uploadInput) {
+        uploadInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const currentCount = bannerImages.length;
+            const availableSlots = 10 - currentCount;
+            
+            if (availableSlots <= 0) {
+                showToast('Maksimal 10 foto sudah tercapai. Hapus semua foto jika ingin mengosongkan.', true);
+                e.target.value = '';
+                return;
+            }
+
+            // Batasi sesuai slot tersisa
+            const limitedFiles = files.slice(0, availableSlots);
+            let loaded = 0;
+            const newImages = [...bannerImages];
+            
+            limitedFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1200;
+                        const MAX_HEIGHT = 800;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Kompres jadi JPEG 60% agar muat di localStorage
+                        newImages.push(canvas.toDataURL('image/jpeg', 0.6));
+                        loaded++;
+                        
+                        if (loaded === limitedFiles.length) {
+                            bannerImages = newImages; 
+                            try {
+                                localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
+                                renderBanner();
+                                showToast(`${limitedFiles.length} foto background berhasil disimpan.`);
+                            } catch(err) {
+                                showToast('Gagal menyimpan foto. Coba unggah ukuran yang lebih kecil.', true);
+                            }
+                        }
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            e.target.value = '';
+        });
+    }
+
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            if(confirm('Hapus semua foto background banner?')) {
+                bannerImages = [];
+                localStorage.removeItem('dxtapremi_banner_bgs');
+                renderBanner();
+                showToast('Foto background berhasil dihapus.');
+            }
+        });
+    }
+    loadBannerImages();
+}
+
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
+    initBannerUploader();
+
     // Auto uppercase for all text inputs
     document.addEventListener('input', (e) => {
         if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) {
@@ -185,6 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initEmployeeModal();
     initAuth();
     initCekPenghasilan();
+    initOwnerDeleteModal();
+    initOwnerReport();
+    updatePeriodLabel();
 
     // Bind refresh button
     const btnRefresh = document.getElementById('btn-refresh-data');
@@ -243,6 +569,10 @@ function initNavigation() {
     const cardKB = document.getElementById('card-ketek-brondolan');
 
     const openForm = (category) => {
+        if (!currentUser) {
+            return;
+        }
+
         state.activeCategory = category;
         document.getElementById('active-category').value = category;
 
@@ -1345,8 +1675,17 @@ function renderHistoryTable() {
     const tbody = document.getElementById('history-table-body');
     tbody.innerHTML = '';
 
-    // Filter records based on active tab
+    // Get period date range
+    const { start: periodStart, end: periodEnd } = getPeriodDates(state.activePeriodIndex);
+
+    // Filter records based on active tab AND active period
     const filteredRecords = state.records.filter(rec => {
+        // Period filter
+        const dateParts = rec.date.split('-');
+        const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+        if (recDateObj < periodStart || recDateObj > periodEnd) return false;
+
+        // Category tab filter
         if (state.activeTab === 'tab-all') return true;
         if (state.activeTab === 'tab-dump-truck' && rec.category === 'dump-truck') return true;
         if (state.activeTab === 'tab-tractor' && rec.category === 'tractor') return true;
@@ -1792,20 +2131,52 @@ function exitEditMode() {
 
 // History tabs filtering
 function initHistoryTabs() {
-    const tabs = document.querySelectorAll('.tab-btn');
+    // Category tabs — only inside .history-tabs
+    const categoryTabContainer = document.querySelector('.history-tabs');
     const btnClearAll = document.getElementById('btn-clear-history');
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-
-            state.activeTab = tab.getAttribute('data-tab');
-            renderHistoryTable();
+    if (categoryTabContainer) {
+        const catTabs = categoryTabContainer.querySelectorAll('.tab-btn');
+        catTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                catTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                state.activeTab = tab.getAttribute('data-tab');
+                renderHistoryTable();
+            });
         });
-    });
+    }
+
+    // Period Dropdown
+    const btnHistoryPeriod = document.getElementById('btn-history-period');
+    if (btnHistoryPeriod) {
+        btnHistoryPeriod.addEventListener('click', () => {
+            openPeriodPicker(btnHistoryPeriod, state.activePeriodIndex, (idx) => {
+                state.activePeriodIndex = idx;
+                updatePeriodLabel();
+                renderHistoryTable();
+            });
+        });
+    }
 
     btnClearAll.addEventListener('click', async () => {
+        if (currentUser === 'OWNER') {
+            const passwordInput = prompt(`Masukkan password untuk akun ${currentUser} untuk menghapus data:`);
+            if (passwordInput === null) return;
+            if (passwordInput.trim() !== CREDENTIALS[currentUser]) {
+                showToast('Password salah! Gagal mengakses fitur hapus.', true);
+                return;
+            }
+            
+            const ownerModal = document.getElementById('modal-owner-delete');
+            if (ownerModal) {
+                ownerModal.classList.remove('hidden');
+                document.getElementById('owner-delete-start').value = getLocalToday();
+                document.getElementById('owner-delete-end').value = getLocalToday();
+            }
+            return;
+        }
+
         const myRecords = state.records.filter(r => r.createdBy === currentUser);
         if (myRecords.length === 0) {
             showToast('Tidak ada data premi buatan Anda untuk dibersihkan.', true);
@@ -1884,6 +2255,45 @@ function updateStats() {
     if (elSubPremi) {
         elSubPremi.textContent = `Total ${dateRangeStr}: ${formatRupiah(totalPremi)}`;
     }
+
+    // Update per-category card stats
+    updateCardStats();
+}
+
+// Update the daily & period total stats on each menu card
+function updateCardStats() {
+    const today = getLocalToday();
+    const { start: pStart, end: pEnd } = getPeriodDates(0);
+
+    // Format period label for card (e.g. "26 Jun – Sekarang")
+    const periodLabel = formatPeriodLabel(0);
+
+    const cats = ['dump-truck', 'tractor', 'brondolan'];
+    const idPrefix = { 'dump-truck': 'dt', 'tractor': 'tr', 'brondolan': 'br' };
+
+    cats.forEach(cat => {
+        const prefix = idPrefix[cat];
+        let todayTotal = 0;
+        let periodTotal = 0;
+
+        state.records.forEach(rec => {
+            if (rec.category !== cat) return;
+
+            const dp = rec.date.split('-');
+            const recDate = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+
+            if (rec.date === today) todayTotal += rec.totalPremi;
+            if (recDate >= pStart && recDate <= pEnd) periodTotal += rec.totalPremi;
+        });
+
+        const elToday = document.getElementById(`card-${prefix}-today`);
+        const elPeriod = document.getElementById(`card-${prefix}-period`);
+        const elPeriodLabel = document.getElementById(`card-${prefix}-period-label`);
+
+        if (elToday) elToday.textContent = formatRupiah(todayTotal);
+        if (elPeriod) elPeriod.textContent = formatRupiah(periodTotal);
+        if (elPeriodLabel) elPeriodLabel.textContent = periodLabel;
+    });
 }
 
 // LocalStorage helpers
@@ -1937,6 +2347,11 @@ function showToast(message, isWarning = false) {
 // EXCEL EXPORT (SheetJS Integrasi)
 function initExcelExport() {
     const btnExport = document.getElementById('btn-export-excel');
+    const modal = document.getElementById('modal-excel-period');
+    const btnClose = document.getElementById('btn-close-excel-period');
+    const listContainer = document.getElementById('excel-period-list');
+
+    if (!btnExport) return;
 
     btnExport.addEventListener('click', () => {
         if (state.records.length === 0) {
@@ -1944,20 +2359,60 @@ function initExcelExport() {
             return;
         }
 
-        exportToExcel();
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            const periods = generatePeriodList(12); // Generate last 12 periods
+            
+            periods.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = p.index === 0 ? 'btn-primary' : 'btn-secondary';
+                btn.style.cssText = 'padding: 0.65rem 0.8rem; font-size: 0.85rem; text-align: left; display: flex; flex-direction: column; gap: 0.15rem; border-radius: var(--radius-sm);';
+                
+                btn.innerHTML = `
+                    <strong style="font-size: 0.9rem;">📄 ${p.title}</strong>
+                    <span style="font-size: 0.75rem; opacity: 0.75; font-weight: 400;">${p.label}</span>
+                `;
+                
+                btn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    exportToExcel(p.index);
+                });
+                
+                listContainer.appendChild(btn);
+            });
+        }
+
+        if (modal) modal.classList.remove('hidden');
     });
+
+    if (btnClose) btnClose.addEventListener('click', () => modal.classList.add('hidden'));
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 }
 
-function exportToExcel() {
+function exportToExcel(periodIndex = 0) {
     try {
         const wb = XLSX.utils.book_new();
+
+        // Filter records by period
+        const { start: periodStart, end: periodEnd } = getPeriodDates(periodIndex);
+        const periodRecords = state.records.filter(rec => {
+            const dp = rec.date.split('-');
+            const d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+            return d >= periodStart && d <= periodEnd;
+        });
+
+        if (periodRecords.length === 0) {
+            showToast(`Tidak ada data untuk periode terpilih.`, true);
+            return;
+        }
 
         // ----------------------------------------------------
         // 1. SHEET RINGKASAN: Gaji/Premi per Orang Karyawan
         // ----------------------------------------------------
         const summaryMap = {};
 
-        state.records.forEach(rec => {
+        periodRecords.forEach(rec => {
             // Drivers
             rec.drivers.forEach(driver => {
                 const dNik = driver.nik;
@@ -2011,7 +2466,7 @@ function exportToExcel() {
         // ----------------------------------------------------
         // 2. SHEET LOADING DUMP TRUCK (Tabel Gabungan Pemuat & Supir)
         // ----------------------------------------------------
-        const dtRecords = state.records
+        const dtRecords = periodRecords
             .filter(r => r.category === 'dump-truck')
             .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
         const dtAOA = [];
@@ -2170,7 +2625,7 @@ function exportToExcel() {
         // ----------------------------------------------------
         // 3. SHEET LOADING TRAKTOR (Format sesuai gambar)
         // ----------------------------------------------------
-        const trRecords = state.records
+        const trRecords = periodRecords
             .filter(r => r.category === 'tractor')
             .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
         const trAOA = [];
@@ -2293,7 +2748,7 @@ function exportToExcel() {
         // ----------------------------------------------------
         // 4. SHEET KETEK BRONDOLAN (Format PERSIS seperti foto)
         // ----------------------------------------------------
-        const brRecords = state.records
+        const brRecords = periodRecords
             .filter(r => r.category === 'brondolan')
             .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
@@ -2392,7 +2847,8 @@ function exportToExcel() {
         // Generasi File & Download
         // ----------------------------------------------------
         const todayStr = new Date().toISOString().split('T')[0];
-        const filename = `dxtapremi_laporan_${todayStr}.xlsx`;
+        const periodStr = periodIndex === 0 ? 'periode-ini' : (periodIndex === 1 ? 'periode-lalu' : `periode-${periodIndex}`);
+        const filename = `dxtapremi_laporan_${periodStr}_${todayStr}.xlsx`;
 
         XLSX.writeFile(wb, filename);
         showToast('File Excel berhasil diunduh: ' + filename);
@@ -2733,6 +3189,8 @@ function updateAuthUI() {
     const menuUtama = document.getElementById('menu-utama');
     const formSection = document.getElementById('form-section');
 
+    const btnOwnerReport = document.getElementById('btn-owner-report');
+
     if (currentUser) {
         // Logged in
         btnLoginLogout.innerHTML = `<i data-lucide="log-out"></i> <span id="login-btn-text">Keluar (${currentUser})</span>`;
@@ -2741,6 +3199,18 @@ function updateAuthUI() {
 
         btnAddEmployee.classList.remove('hidden');
         btnClearHistory.classList.remove('hidden');
+        if (currentUser === 'OWNER' && btnOwnerReport) {
+            btnOwnerReport.classList.remove('hidden');
+        } else if (btnOwnerReport) {
+            btnOwnerReport.classList.add('hidden');
+        }
+
+        const btnBannerControls = document.getElementById('banner-controls');
+        if (currentUser === 'OWNER' && btnBannerControls) {
+            btnBannerControls.classList.remove('hidden');
+        } else if (btnBannerControls) {
+            btnBannerControls.classList.add('hidden');
+        }
 
         // Show navigation menu if we aren't in form section
         if (state.activeCategory) {
@@ -2750,6 +3220,14 @@ function updateAuthUI() {
             menuUtama.classList.remove('hidden');
             formSection.classList.add('hidden');
         }
+
+        // Show card footers for logged in users
+        document.querySelectorAll('.menu-card').forEach(card => {
+            card.style.cursor = 'pointer';
+            const footer = card.querySelector('.card-footer');
+            if (footer) footer.style.display = 'flex';
+        });
+
     } else {
         // Not logged in
         btnLoginLogout.innerHTML = `<i data-lucide="log-in"></i> <span id="login-btn-text">Masuk</span>`;
@@ -2758,11 +3236,22 @@ function updateAuthUI() {
 
         btnAddEmployee.classList.add('hidden');
         btnClearHistory.classList.add('hidden');
+        if (btnOwnerReport) btnOwnerReport.classList.add('hidden');
+        
+        const btnBannerControls = document.getElementById('banner-controls');
+        if (btnBannerControls) btnBannerControls.classList.add('hidden');
 
-        // Always hide cards & forms
-        menuUtama.classList.add('hidden');
+        // Allow visitors to see cards, but not the forms
+        menuUtama.classList.remove('hidden');
         formSection.classList.add('hidden');
         state.activeCategory = '';
+
+        // Hide card footers for visitors and remove pointer cursor
+        document.querySelectorAll('.menu-card').forEach(card => {
+            card.style.cursor = 'default';
+            const footer = card.querySelector('.card-footer');
+            if (footer) footer.style.display = 'none';
+        });
     }
 
     lucide.createIcons();
@@ -2884,6 +3373,256 @@ async function deleteOnlineRecord(id) {
     });
     if (!response.ok) throw new Error("Gagal menghapus data di Supabase");
     return true;
+}
+
+async function deleteOnlineRecordsByDate(startDate, endDate) {
+    if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return false;
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?date=gte.${startDate}&date=lte.${endDate}`, {
+        method: "DELETE",
+        headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`
+        }
+    });
+    if (!response.ok) throw new Error("Gagal menghapus data di Supabase");
+    return true;
+}
+
+function initOwnerDeleteModal() {
+    const modal = document.getElementById('modal-owner-delete');
+    const btnClose = document.getElementById('btn-close-owner-delete');
+    const btnConfirm = document.getElementById('btn-confirm-owner-delete');
+    const inputStart = document.getElementById('owner-delete-start');
+    const inputEnd = document.getElementById('owner-delete-end');
+
+    if (!modal) return;
+
+    btnClose.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    btnConfirm.addEventListener('click', async () => {
+        const start = inputStart.value;
+        const end = inputEnd.value;
+
+        if (!start || !end) {
+            showToast('Pilih rentang tanggal yang valid.', true);
+            return;
+        }
+
+        if (start > end) {
+            showToast('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.', true);
+            return;
+        }
+
+        if (!confirm(`Hapus SEMUA data dari tanggal ${start} sampai ${end}? Tindakan ini permanen.`)) {
+            return;
+        }
+
+        // Delete locally
+        state.records = state.records.filter(r => r.date < start || r.date > end);
+        saveLocalRecords();
+        updateStats();
+        renderHistoryTable();
+
+        modal.classList.add('hidden');
+
+        // Delete from Supabase
+        if (SUPABASE_URL && SUPABASE_URL !== "YOUR_SUPABASE_PROJECT_URL") {
+            try {
+                showToast('Menghapus data online...');
+                await deleteOnlineRecordsByDate(start, end);
+                showToast(`Data rentang ${start} hingga ${end} berhasil dihapus online.`);
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal menghapus data online rentang tersebut.', true);
+            }
+        } else {
+            showToast(`Data rentang ${start} hingga ${end} berhasil dihapus lokal.`, true);
+        }
+    });
+}
+
+function initOwnerReport() {
+    const btnOpen = document.getElementById('btn-owner-report');
+    const modal = document.getElementById('modal-owner-report');
+    const btnClose = document.getElementById('btn-close-owner-report');
+    const btnExcel = document.getElementById('btn-owner-report-excel');
+    const reportBody = document.getElementById('owner-report-body');
+
+    if (!btnOpen || !modal) return;
+
+    let reportData = []; // Store the data to be exported
+
+    btnOpen.addEventListener('click', () => {
+        if (currentUser !== 'OWNER') return;
+
+        // Generate report data
+        const today = new Date();
+        const currentMonth = today.getMonth(); // 0-11
+        const currentYear = today.getFullYear();
+        const cutoffDate = new Date(currentYear, currentMonth, 26); // Before 26th of this month
+
+        const summaryMap = {};
+
+        state.records.forEach(rec => {
+            const dateParts = rec.date.split('-');
+            const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+
+            // Only include records before the 25th of the current month
+            if (recDateObj < cutoffDate) {
+                // Add drivers (Exclude Dump Truck and Kontraktor)
+                if (rec.category !== 'dump-truck' && rec.carType !== 'MOBIL KONTRAKTOR') {
+                    rec.drivers.forEach(driver => {
+                        if (!summaryMap[driver.nik]) {
+                            summaryMap[driver.nik] = { nik: driver.nik, name: driver.name, total: 0 };
+                        }
+                        summaryMap[driver.nik].total += driver.amount;
+                    });
+                }
+                
+                // Add loaders
+                rec.loaders.forEach(loader => {
+                    if (!summaryMap[loader.nik]) {
+                        summaryMap[loader.nik] = { nik: loader.nik, name: loader.name, total: 0 };
+                    }
+                    summaryMap[loader.nik].total += loader.amount;
+                });
+            }
+        });
+
+        // Convert map to array, calculate fee, and filter out those with 0 total
+        reportData = Object.values(summaryMap).filter(item => item.total > 0).map(item => {
+            const fee = item.total * 0.04;
+            const netTotal = item.total - fee;
+            return {
+                nik: item.nik,
+                name: item.name,
+                total: item.total,
+                fee: fee,
+                netTotal: netTotal
+            };
+        });
+
+        // Sort by Total Descending
+        reportData.sort((a, b) => b.total - a.total);
+
+        // Render Table
+        reportBody.innerHTML = '';
+        const reportFoot = document.getElementById('owner-report-foot');
+        if (reportFoot) reportFoot.innerHTML = '';
+
+        if (reportData.length === 0) {
+            reportBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1rem; color: var(--text-muted);">Tidak ada data hasil kerja sebelum tanggal 26 bulan ini.</td></tr>';
+        } else {
+            let sumTotal = 0;
+            let sumFee = 0;
+            let sumNetTotal = 0;
+
+            reportData.forEach(row => {
+                sumTotal += row.total;
+                sumFee += row.fee;
+                sumNetTotal += row.netTotal;
+
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border-color)';
+                tr.innerHTML = `
+                    <td style="padding: 0.75rem;">${row.nik}</td>
+                    <td style="padding: 0.75rem; font-weight: 500;">${row.name}</td>
+                    <td style="padding: 0.75rem;">${formatRupiah(row.total)}</td>
+                    <td style="padding: 0.75rem; color: var(--danger); font-weight: 600;">${formatRupiah(row.fee)}</td>
+                    <td style="padding: 0.75rem; color: var(--accent-gold); font-weight: 700;">${formatRupiah(row.netTotal)}</td>
+                `;
+                reportBody.appendChild(tr);
+            });
+
+            // Render Foot
+            if (reportFoot) {
+                const trFoot = document.createElement('tr');
+                trFoot.innerHTML = `
+                    <td colspan="2" style="padding: 0.75rem; text-align: right; color: var(--text-secondary);">GRAND TOTAL</td>
+                    <td style="padding: 0.75rem;">${formatRupiah(sumTotal)}</td>
+                    <td style="padding: 0.75rem; color: var(--danger);">${formatRupiah(sumFee)}</td>
+                    <td style="padding: 0.75rem; color: var(--accent-gold);">${formatRupiah(sumNetTotal)}</td>
+                `;
+                reportFoot.appendChild(trFoot);
+            }
+        }
+
+        modal.classList.remove('hidden');
+    });
+
+    btnClose.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    btnExcel.addEventListener('click', () => {
+        if (reportData.length === 0) {
+            showToast('Tidak ada data untuk diekspor.', true);
+            return;
+        }
+
+        try {
+            const wb = XLSX.utils.book_new();
+            const excelRows = reportData.map((row, index) => ({
+                "NO": index + 1,
+                "ID": row.nik,
+                "NAMA": row.name,
+                "TOTAL HASIL KERJA": row.total,
+                "FEE 4%": row.fee,
+                "PENDAPATAN BERSIH": row.netTotal
+            }));
+
+            // Add Grand Total Row
+            const sumTotal = reportData.reduce((acc, curr) => acc + curr.total, 0);
+            const sumFee = reportData.reduce((acc, curr) => acc + curr.fee, 0);
+            const sumNetTotal = reportData.reduce((acc, curr) => acc + curr.netTotal, 0);
+
+            excelRows.push({
+                "NO": "",
+                "ID": "",
+                "NAMA": "GRAND TOTAL",
+                "TOTAL HASIL KERJA": sumTotal,
+                "FEE 4%": sumFee,
+                "PENDAPATAN BERSIH": sumNetTotal
+            });
+
+            const ws = XLSX.utils.json_to_sheet(excelRows);
+
+            // Formatting columns for Currency
+            for (let r = 1; r <= excelRows.length; r++) {
+                const cols = [3, 4, 5]; // Indexes for TOTAL HASIL KERJA, FEE 4%, PENDAPATAN BERSIH
+                cols.forEach(c => {
+                    const addr = XLSX.utils.encode_cell({ r, c });
+                    if (ws[addr] && ws[addr].t === 'n') ws[addr].z = '"Rp "#,##0';
+                });
+            }
+
+            ws['!cols'] = [
+                { wch: 5 },  // NO
+                { wch: 15 }, // ID
+                { wch: 30 }, // NAMA
+                { wch: 22 }, // TOTAL HASIL KERJA
+                { wch: 18 }, // FEE 4%
+                { wch: 22 }, // PENDAPATAN BERSIH
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Laporan Pendapatan Pekerja");
+            XLSX.writeFile(wb, "Laporan_Pendapatan_Pekerja_Owner.xlsx");
+            showToast('File Excel berhasil diunduh!');
+        } catch (e) {
+            console.error(e);
+            showToast('Gagal mengekspor Excel.', true);
+        }
+    });
 }
 
 async function deleteMyOnlineRecords(username) {
@@ -3015,6 +3754,22 @@ function initCekPenghasilan() {
         if (e.target === modal) modal.classList.add('hidden');
     });
 
+    const btnCekPeriode = document.getElementById('btn-cek-periode');
+    const lblCekPeriode = document.getElementById('cek-periode-label');
+    
+    // Initialize label
+    if (lblCekPeriode) lblCekPeriode.textContent = formatPeriodLabel(state.activeCekPeriodIndex);
+
+    if (btnCekPeriode) {
+        btnCekPeriode.addEventListener('click', () => {
+            openPeriodPicker(btnCekPeriode, state.activeCekPeriodIndex, (idx) => {
+                state.activeCekPeriodIndex = idx;
+                if (lblCekPeriode) lblCekPeriode.textContent = formatPeriodLabel(idx);
+                if (inputNama.value.trim()) performSearch();
+            });
+        });
+    }
+
     const performSearch = () => {
         const query = inputNama.value.trim().toLowerCase();
         if (!query) {
@@ -3022,37 +3777,47 @@ function initCekPenghasilan() {
             return;
         }
 
+        // Use shared period helper
+        const { start: periodStart, end: periodEnd } = getPeriodDates(state.activeCekPeriodIndex);
+
         let total = 0;
         const findings = [];
 
         // Search in records
         state.records.forEach(rec => {
-            // Check drivers
-            rec.drivers.forEach(driver => {
-                if (driver.name.toLowerCase().includes(query)) {
-                    total += driver.amount;
-                    let peran = rec.category === 'tractor' ? 'Operator' : 'Supir';
-                    let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
-                    findings.push({
-                        date: rec.date,
-                        job: `${jobLabel} (${peran})`,
-                        amount: driver.amount
-                    });
-                }
-            });
-            // Check loaders
-            rec.loaders.forEach(loader => {
-                if (loader.name.toLowerCase().includes(query)) {
-                    total += loader.amount;
-                    let peran = rec.category === 'brondolan' ? 'Pengumpul' : 'Pemuat';
-                    let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
-                    findings.push({
-                        date: rec.date,
-                        job: `${jobLabel} (${peran})`,
-                        amount: loader.amount
-                    });
-                }
-            });
+            const dateParts = rec.date.split('-');
+            const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+            
+            const include = recDateObj >= periodStart && recDateObj <= periodEnd;
+
+            if (include) {
+                // Check drivers
+                rec.drivers.forEach(driver => {
+                    if (driver.name.toLowerCase().includes(query)) {
+                        total += driver.amount;
+                        let peran = rec.category === 'tractor' ? 'Operator' : 'Supir';
+                        let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
+                        findings.push({
+                            date: rec.date,
+                            job: `${jobLabel} (${peran})`,
+                            amount: driver.amount
+                        });
+                    }
+                });
+                // Check loaders
+                rec.loaders.forEach(loader => {
+                    if (loader.name.toLowerCase().includes(query)) {
+                        total += loader.amount;
+                        let peran = rec.category === 'brondolan' ? 'Pengumpul' : 'Pemuat';
+                        let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
+                        findings.push({
+                            date: rec.date,
+                            job: `${jobLabel} (${peran})`,
+                            amount: loader.amount
+                        });
+                    }
+                });
+            }
         });
 
         // Sort findings by date descending
@@ -3073,6 +3838,7 @@ function initCekPenghasilan() {
             findings.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid var(--border-color)';
+                
                 tr.innerHTML = `
                     <td style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">${item.date}</td>
                     <td style="padding: 0.5rem 0.75rem; font-weight: 500;">${item.job}</td>
@@ -3081,7 +3847,6 @@ function initCekPenghasilan() {
                 historyBody.appendChild(tr);
             });
         }
-        lucide.createIcons();
     };
 
     btnCari.addEventListener('click', performSearch);

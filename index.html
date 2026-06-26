@@ -62,13 +62,31 @@
         <main class="main-content">
 
             <!-- Welcome Banner -->
-            <section class="welcome-banner">
-                <div class="banner-content">
+            <section class="welcome-banner" style="position: relative; overflow: hidden;">
+                <!-- Slideshow Background Container -->
+                <div id="banner-slideshow-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+                    <div id="banner-slideshow-track" style="display: flex; height: 100%; transition: transform 2s ease-in-out; width: 100%;"></div>
+                </div>
+                <!-- Dark Overlay for Readability -->
+                <div id="banner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: rgba(10, 30, 20, 0.65); display: none;"></div>
+                
+                <!-- Owner Controls -->
+                <div id="banner-controls" class="hidden" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; gap: 0.5rem; align-items: center;">
+                    <label for="banner-upload" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;">
+                        <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Tambah Foto
+                    </label>
+                    <input type="file" id="banner-upload" accept="image/*" multiple class="hidden" style="display: none;">
+                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Semua Foto">
+                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus
+                    </button>
+                </div>
+
+                <div class="banner-content" style="position: relative; z-index: 2;">
                     <p class="banner-greeting">Selamat Datang di Portal</p>
                     <h2>Premi Pekerja</h2>
                     <p class="banner-desc">Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai pencatatan premi harian.</p>
                 </div>
-                <div class="banner-illustration">
+                <div class="banner-illustration" style="position: relative; z-index: 2;">
                     <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" class="banner-svg">
                         <!-- Clipboard -->
                         <rect x="35" y="20" width="90" height="120" rx="12" fill="rgba(30,60,80,0.85)" stroke="rgba(100,200,200,0.3)" stroke-width="2"/>
@@ -128,8 +146,16 @@
                 <!-- Card 1 -->
                 <div class="menu-card" id="card-dump-truck">
                     <div class="card-glow"></div>
-                    <div class="card-icon c-orange">
-                        <i data-lucide="truck"></i>
+                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div class="card-icon c-orange">
+                            <i data-lucide="truck"></i>
+                        </div>
+                        <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
+                            <div id="card-dt-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-dt-period-label">Periode ini</div>
+                            <div id="card-dt-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                        </div>
                     </div>
                     <h3>Loading Bak Mati / Dump Truck</h3>
                     <p>Pencatatan premi untuk Supir Dump Truck dan para Pekerja Pemuat (Loaders).</p>
@@ -142,8 +168,16 @@
                 <!-- Card 2 -->
                 <div class="menu-card" id="card-tractor">
                     <div class="card-glow"></div>
-                    <div class="card-icon c-green">
-                        <i data-lucide="tractor"></i>
+                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div class="card-icon c-green">
+                            <i data-lucide="tractor"></i>
+                        </div>
+                        <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
+                            <div id="card-tr-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-tr-period-label">Periode ini</div>
+                            <div id="card-tr-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                        </div>
                     </div>
                     <h3>Loading Traktor / Operator</h3>
                     <p>Pencatatan premi untuk Operator Traktor dan para Pekerja Pemuat (Loaders).</p>
@@ -156,8 +190,16 @@
                 <!-- Card 3 -->
                 <div class="menu-card" id="card-ketek-brondolan">
                     <div class="card-glow"></div>
-                    <div class="card-icon c-blue">
-                        <i data-lucide="droplet"></i>
+                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div class="card-icon c-blue">
+                            <i data-lucide="droplet"></i>
+                        </div>
+                        <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
+                            <div id="card-br-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-br-period-label">Periode ini</div>
+                            <div id="card-br-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                        </div>
                     </div>
                     <h3>Ketek Brondolan</h3>
                     <p>Pencatatan premi pengumpulan brondolan sawit.</p>
@@ -385,6 +427,9 @@
                         <button id="btn-refresh-data" class="btn-secondary" title="Segarkan Data Online" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
                             <i data-lucide="refresh-cw"></i> Segarkan
                         </button>
+                        <button id="btn-owner-report" class="btn-primary hidden" title="Laporan Khusus Owner">
+                            <i data-lucide="bar-chart-2"></i> Laporan (Owner)
+                        </button>
                         <button id="btn-clear-history" class="btn-danger-outline">
                             <i data-lucide="trash-2"></i> Bersihkan Semua
                         </button>
@@ -395,7 +440,16 @@
                     </div>
                 </div>
 
-                <!-- History Tabs -->
+                <!-- Period Filter Bar -->
+                <div class="history-period-tabs" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0 0.5rem 0; flex-wrap: wrap;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
+                    <button id="btn-history-period" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
+                        <span id="history-period-label">Memuat...</span>
+                        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                    </button>
+                </div>
+
+                <!-- History Category Tabs -->
                 <div class="history-tabs">
                     <button class="tab-btn active" data-tab="tab-all">Semua Kategori</button>
                     <button class="tab-btn" data-tab="tab-dump-truck">Dump Truck</button>
@@ -514,6 +568,12 @@
                             <button id="btn-cek-cari" class="btn-primary" style="padding: 0 1rem;"><i data-lucide="search"></i> Cari</button>
                         </div>
                     </div>
+                    <div style="margin-top: 1rem; position: relative;">
+                        <button id="btn-cek-periode" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; font-weight: 600;">
+                            <span id="cek-periode-label">Memuat periode...</span>
+                            <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="cek-result-container" class="hidden">
@@ -537,6 +597,83 @@
                             </tbody>
                         </table>
                         <div id="cek-empty-state" class="hidden" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada data untuk pekerja ini.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Hapus Data Owner -->
+        <div id="modal-owner-delete" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3 style="color: var(--danger);">Hapus Data (Owner)</h3>
+                    <button id="btn-close-owner-delete" class="btn-close">&times;</button>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih rentang tanggal data yang ingin dihapus. Semua data (dari semua pembuat) dalam rentang tanggal ini akan dihapus secara permanen.</p>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="owner-delete-start">Dari Tanggal</label>
+                        <input type="date" id="owner-delete-start" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="owner-delete-end">Sampai Tanggal</label>
+                        <input type="date" id="owner-delete-end" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                    </div>
+                    <button id="btn-confirm-owner-delete" class="btn-danger" style="width: 100%; padding: 0.75rem; font-weight: 600;">Hapus Data Terpilih</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Owner Report -->
+        <div id="modal-owner-report" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width: 800px; width: 90%;">
+                <div class="modal-header">
+                    <h3>Laporan Pendapatan Pekerja (Owner)</h3>
+                    <button id="btn-close-owner-report" class="btn-close">&times;</button>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        Total pendapatan pekerja dari tanggal sebelum 26 bulan ini.
+                    </p>
+                    <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+                        <button id="btn-owner-report-excel" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                            <i data-lucide="file-spreadsheet"></i> Unduh Excel Pekerja
+                        </button>
+                    </div>
+                    <div style="overflow-x: auto; overflow-y: auto; max-height: 60vh; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead style="background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
+                                <tr>
+                                    <th style="padding: 0.75rem; color: var(--text-secondary);">NIK</th>
+                                    <th style="padding: 0.75rem; color: var(--text-secondary);">Nama</th>
+                                    <th style="padding: 0.75rem; color: var(--text-secondary);">Total Kerja</th>
+                                    <th style="padding: 0.75rem; color: var(--danger);">Fee 4%</th>
+                                    <th style="padding: 0.75rem; color: var(--accent-gold);">Total Bersih</th>
+                                </tr>
+                            </thead>
+                            <tbody id="owner-report-body">
+                                <!-- Data injected here -->
+                            </tbody>
+                            <tfoot id="owner-report-foot" style="background: var(--bg-body); border-top: 1px solid var(--border-color); font-weight: 700;">
+                                <!-- Totals injected here -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pilih Periode Excel -->
+        <div id="modal-excel-period" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width: 480px; width: 90%;">
+                <div class="modal-header">
+                    <h3>Unduh Laporan Excel</h3>
+                    <button id="btn-close-excel-period" class="btn-close">&times;</button>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih periode data yang ingin diekspor:</p>
+                    <div id="excel-period-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+                        <!-- Dynamically populated by JS -->
                     </div>
                 </div>
             </div>
