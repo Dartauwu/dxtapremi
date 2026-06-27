@@ -427,7 +427,7 @@ function initBannerUploader() {
     let cropStartOffX = 0;
     let cropStartOffY = 0;
     const CROP_ASPECT = 16 / 5;  // Banner aspect ratio
-    const OUTPUT_W = 1400;       // Output crop width
+    const OUTPUT_W = 2000;       // Output crop width (higher res)
     const OUTPUT_H = Math.round(OUTPUT_W / CROP_ASPECT);
 
     function openCropModal(imgSrc) {
@@ -447,7 +447,7 @@ function initBannerUploader() {
             requestAnimationFrame(() => {
                 const wrapper = document.getElementById('crop-area-wrapper');
                 const wrapperW = wrapper.clientWidth || 800;
-                const wrapperH = wrapper.clientHeight || 400;
+                const wrapperH = wrapper.clientHeight || 500;
 
                 // Canvas display matches wrapper 
                 const displayW = wrapperW;
@@ -465,16 +465,19 @@ function initBannerUploader() {
                 if (zoomLabel) { zoomLabel.textContent = '100%'; }
 
                 // Auto-fit: scale so image covers crop area
-                const cropBoxW = displayW * 0.9;
+                const cropBoxW = displayW * 0.95;
                 const cropBoxH = cropBoxW / CROP_ASPECT;
                 const scaleToFitW = cropBoxW / cropSourceImg.width;
                 const scaleToFitH = cropBoxH / cropSourceImg.height;
-                const autoZoom = Math.max(scaleToFitW, scaleToFitH);
-                cropZoom = autoZoom;
-                const zoomPercent = Math.round(autoZoom * 100);
+                const coverZoom = Math.max(scaleToFitW, scaleToFitH);
+                const containZoom = Math.min(scaleToFitW, scaleToFitH);
+
+                cropZoom = coverZoom;
+                const zoomPercent = Math.round(coverZoom * 100);
+                const minZoomPercent = Math.round(containZoom * 100);
                 if (zoomSlider) { 
-                    zoomSlider.min = Math.max(10, Math.round(zoomPercent * 0.5));
-                    zoomSlider.max = Math.round(zoomPercent * 3);
+                    zoomSlider.min = Math.min(10, minZoomPercent);
+                    zoomSlider.max = Math.round(coverZoom * 300);
                     zoomSlider.value = zoomPercent; 
                 }
                 if (zoomLabel) { zoomLabel.textContent = zoomPercent + '%'; }
@@ -498,8 +501,8 @@ function initBannerUploader() {
         const cw = canvas.width;
         const ch = canvas.height;
 
-        // Crop box dimensions (centered, 90% width)
-        const cropBoxW = cw * 0.9;
+        // Crop box dimensions (centered, 95% width)
+        const cropBoxW = cw * 0.95;
         const cropBoxH = cropBoxW / CROP_ASPECT;
         const cropBoxX = (cw - cropBoxW) / 2;
         const cropBoxY = (ch - cropBoxH) / 2;
@@ -554,22 +557,27 @@ function initBannerUploader() {
         if (!cropSourceImg) return null;
         const canvas = document.getElementById('crop-canvas');
         const cw = canvas.width;
-        const cropBoxW = cw * 0.9;
+        const cropBoxW = cw * 0.95;
         const cropBoxH = cropBoxW / CROP_ASPECT;
 
-        // Source crop region (in original image pixels)
-        const sx = cropOffsetX;
-        const sy = cropOffsetY;
-        const sw = cropBoxW / cropZoom;
-        const sh = cropBoxH / cropZoom;
-
-        // Output canvas
         const outCanvas = document.createElement('canvas');
         outCanvas.width = OUTPUT_W;
         outCanvas.height = OUTPUT_H;
         const outCtx = outCanvas.getContext('2d');
-        outCtx.drawImage(cropSourceImg, sx, sy, sw, sh, 0, 0, OUTPUT_W, OUTPUT_H);
-        return outCanvas.toDataURL('image/jpeg', 0.7);
+        
+        // Background fill for space outside image bounds
+        outCtx.fillStyle = '#0a1410'; 
+        outCtx.fillRect(0, 0, OUTPUT_W, OUTPUT_H);
+
+        const scale = OUTPUT_W / cropBoxW;
+        const drawW = cropSourceImg.width * cropZoom * scale;
+        const drawH = cropSourceImg.height * cropZoom * scale;
+        
+        const dx = -cropOffsetX * cropZoom * scale;
+        const dy = -cropOffsetY * cropZoom * scale;
+
+        outCtx.drawImage(cropSourceImg, dx, dy, drawW, drawH);
+        return outCanvas.toDataURL('image/jpeg', 0.85);
     }
 
     // --- Mouse/Touch drag on canvas ---
@@ -651,12 +659,28 @@ function initBannerUploader() {
         if (!cropSourceImg) return;
         const canvas = document.getElementById('crop-canvas');
         const cw = canvas.width;
-        const cropBoxW = cw * 0.9;
+        const cropBoxW = cw * 0.95;
         const cropBoxH = cropBoxW / CROP_ASPECT;
-        const maxOffX = Math.max(0, cropSourceImg.width - cropBoxW / cropZoom);
-        const maxOffY = Math.max(0, cropSourceImg.height - cropBoxH / cropZoom);
-        cropOffsetX = Math.max(0, Math.min(cropOffsetX, maxOffX));
-        cropOffsetY = Math.max(0, Math.min(cropOffsetY, maxOffY));
+        
+        const scaledW = cropSourceImg.width * cropZoom;
+        const scaledH = cropSourceImg.height * cropZoom;
+        
+        let minX = 0, maxX = 0, minY = 0, maxY = 0;
+        
+        if (scaledW >= cropBoxW) {
+            maxX = (scaledW - cropBoxW) / cropZoom;
+        } else {
+            minX = maxX = (scaledW - cropBoxW) / 2 / cropZoom;
+        }
+        
+        if (scaledH >= cropBoxH) {
+            maxY = (scaledH - cropBoxH) / cropZoom;
+        } else {
+            minY = maxY = (scaledH - cropBoxH) / 2 / cropZoom;
+        }
+        
+        cropOffsetX = Math.max(minX, Math.min(cropOffsetX, maxX));
+        cropOffsetY = Math.max(minY, Math.min(cropOffsetY, maxY));
     }
 
     function closeCropModal() {
@@ -700,15 +724,22 @@ function initBannerUploader() {
         btnCropSave.addEventListener('click', () => {
             const croppedData = getCroppedDataURL();
             if (!croppedData) { closeCropModal(); return; }
-            // Simpan sebagai satu-satunya foto banner
-            bannerImages = [croppedData];
+            
+            if (bannerImages.length >= 10) {
+                showToast('Maksimal 10 foto. Hapus foto lama terlebih dahulu.', true);
+                closeCropModal();
+                return;
+            }
+
+            bannerImages.push(croppedData);
             try {
                 localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
                 renderBanner();
                 syncBannerToSupabase();
-                showToast('Foto banner berhasil disimpan.');
+                showToast('Foto banner berhasil ditambahkan.');
             } catch(err) {
-                showToast('Gagal menyimpan foto. Coba gambar yang lebih kecil.', true);
+                bannerImages.pop();
+                showToast('Gagal menyimpan foto. Storage penuh, coba resolusi lebih kecil.', true);
             }
             closeCropModal();
         });

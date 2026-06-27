@@ -72,12 +72,12 @@
                 
                 <!-- Owner Controls -->
                 <div id="banner-controls" class="hidden" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; gap: 0.5rem; align-items: center;">
-                    <label for="banner-upload" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;">
-                        <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Ganti Foto
+                    <label for="banner-upload" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;" title="Bisa upload hingga 10 foto">
+                        <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Tambah Foto
                     </label>
                     <input type="file" id="banner-upload" accept="image/*" class="hidden" style="display: none;">
-                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Foto">
-                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus
+                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Semua Foto">
+                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus Semua
                     </button>
                 </div>
 
@@ -686,8 +686,8 @@
                     <h3>Crop Foto Banner</h3>
                     <button id="btn-close-crop" class="btn-close">&times;</button>
                 </div>
-                <div id="crop-area-wrapper" style="position: relative; width: 100%; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 70vh; min-height: 300px;">
-                    <canvas id="crop-canvas" style="display: block; max-width: 100%; max-height: 70vh; cursor: move;"></canvas>
+                <div id="crop-area-wrapper" style="position: relative; width: 100%; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 80vh; min-height: 450px;">
+                    <canvas id="crop-canvas" style="display: block; max-width: 100%; max-height: 80vh; cursor: move;"></canvas>
                     <!-- Crop overlay drawn on canvas -->
                 </div>
                 <div style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border-color);">
