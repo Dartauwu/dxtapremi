@@ -73,10 +73,10 @@
                 <!-- Owner Controls -->
                 <div id="banner-controls" class="hidden" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; gap: 0.5rem; align-items: center;">
                     <label for="banner-upload" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;">
-                        <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Tambah Foto
+                        <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Ganti Foto
                     </label>
-                    <input type="file" id="banner-upload" accept="image/*" multiple class="hidden" style="display: none;">
-                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Semua Foto">
+                    <input type="file" id="banner-upload" accept="image/*" class="hidden" style="display: none;">
+                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Foto">
                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus
                     </button>
                 </div>
@@ -674,6 +674,33 @@
                     <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih periode data yang ingin diekspor:</p>
                     <div id="excel-period-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
                         <!-- Dynamically populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Crop Foto Banner -->
+        <div id="modal-crop-banner" class="modal-overlay hidden" style="z-index: 9999;">
+            <div class="modal-card" style="max-width: 900px; width: 95%; padding: 0; overflow: hidden;">
+                <div class="modal-header" style="padding: 1rem 1.5rem;">
+                    <h3>Crop Foto Banner</h3>
+                    <button id="btn-close-crop" class="btn-close">&times;</button>
+                </div>
+                <div id="crop-area-wrapper" style="position: relative; width: 100%; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 70vh; min-height: 300px;">
+                    <canvas id="crop-canvas" style="display: block; max-width: 100%; max-height: 70vh; cursor: move;"></canvas>
+                    <!-- Crop overlay drawn on canvas -->
+                </div>
+                <div style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <label style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Zoom:</label>
+                        <input type="range" id="crop-zoom" min="10" max="200" value="100" style="width: 140px; accent-color: var(--accent-teal);">
+                        <span id="crop-zoom-label" style="font-size: 0.8rem; color: var(--text-secondary); min-width: 36px;">100%</span>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="btn-crop-cancel" class="btn-secondary" style="padding: 0.5rem 1.25rem;">Batal</button>
+                        <button id="btn-crop-save" class="btn-primary" style="padding: 0.5rem 1.25rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <i data-lucide="crop" style="width: 16px; height: 16px;"></i> Simpan Crop
+                        </button>
                     </div>
                 </div>
             </div>

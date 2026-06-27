@@ -215,6 +215,7 @@ body::before {
     border: 1px solid rgba(16, 185, 150, 0.12);
     border-radius: var(--radius-xl);
     padding: 2.5rem 2.5rem;
+    min-height: 380px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1753,6 +1754,7 @@ input[readonly] {
 
     .welcome-banner {
         padding: 1.5rem;
+        min-height: 220px;
     }
 
     .banner-content {
@@ -1845,6 +1847,7 @@ input[readonly] {
     /* Banner */
     .welcome-banner {
         padding: 1.5rem;
+        min-height: 200px;
         gap: 1.25rem;
         flex-direction: column;
     }
@@ -2182,6 +2185,7 @@ input[readonly] {
     /* Banner */
     .welcome-banner {
         padding: 1.25rem;
+        min-height: 180px;
         border-radius: var(--radius-lg);
     }
 

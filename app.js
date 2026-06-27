@@ -145,7 +145,14 @@ function formatPeriodLabel(index) {
     index = index || 0;
     const { start, end } = getPeriodDates(index);
     const opts = { day: 'numeric', month: 'short', year: 'numeric' };
-    return `${start.toLocaleDateString('id-ID', opts)} – ${end.toLocaleDateString('id-ID', opts)}`;
+    const startStr = start.toLocaleDateString('id-ID', opts);
+    // Untuk periode saat ini (index 0), tampilkan tanggal hari ini sebagai akhir
+    if (index === 0) {
+        const today = new Date();
+        const endStr = today.toLocaleDateString('id-ID', opts);
+        return `${startStr} – ${endStr}`;
+    }
+    return `${startStr} – ${end.toLocaleDateString('id-ID', opts)}`;
 }
 
 // Generate list of periods from Mei 2026 up to current period
@@ -409,80 +416,272 @@ function initBannerUploader() {
     const uploadInput = document.getElementById('banner-upload');
     const btnClear = document.getElementById('btn-banner-clear');
 
+    // --- Crop State ---
+    let cropSourceImg = null;    // Original Image object
+    let cropZoom = 1;
+    let cropOffsetX = 0;         // Pan offset (in source image px)
+    let cropOffsetY = 0;
+    let cropDragging = false;
+    let cropDragStartX = 0;
+    let cropDragStartY = 0;
+    let cropStartOffX = 0;
+    let cropStartOffY = 0;
+    const CROP_ASPECT = 16 / 5;  // Banner aspect ratio
+    const OUTPUT_W = 1400;       // Output crop width
+    const OUTPUT_H = Math.round(OUTPUT_W / CROP_ASPECT);
+
+    function openCropModal(imgSrc) {
+        const modal = document.getElementById('modal-crop-banner');
+        const canvas = document.getElementById('crop-canvas');
+        const zoomSlider = document.getElementById('crop-zoom');
+        const zoomLabel = document.getElementById('crop-zoom-label');
+        if (!modal || !canvas) return;
+
+        cropSourceImg = new Image();
+        cropSourceImg.onload = () => {
+            // Show modal FIRST so wrapper has real dimensions
+            modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+
+            // Wait one frame for browser to layout the modal
+            requestAnimationFrame(() => {
+                const wrapper = document.getElementById('crop-area-wrapper');
+                const wrapperW = wrapper.clientWidth || 800;
+                const wrapperH = wrapper.clientHeight || 400;
+
+                // Canvas display matches wrapper 
+                const displayW = wrapperW;
+                const displayH = Math.min(wrapperH, Math.round(wrapperW / CROP_ASPECT) + 120);
+                canvas.width = displayW;
+                canvas.height = displayH;
+                canvas.style.width = displayW + 'px';
+                canvas.style.height = displayH + 'px';
+
+                // Reset crop state
+                cropZoom = 1;
+                cropOffsetX = 0;
+                cropOffsetY = 0;
+                if (zoomSlider) { zoomSlider.value = 100; }
+                if (zoomLabel) { zoomLabel.textContent = '100%'; }
+
+                // Auto-fit: scale so image covers crop area
+                const cropBoxW = displayW * 0.9;
+                const cropBoxH = cropBoxW / CROP_ASPECT;
+                const scaleToFitW = cropBoxW / cropSourceImg.width;
+                const scaleToFitH = cropBoxH / cropSourceImg.height;
+                const autoZoom = Math.max(scaleToFitW, scaleToFitH);
+                cropZoom = autoZoom;
+                const zoomPercent = Math.round(autoZoom * 100);
+                if (zoomSlider) { 
+                    zoomSlider.min = Math.max(10, Math.round(zoomPercent * 0.5));
+                    zoomSlider.max = Math.round(zoomPercent * 3);
+                    zoomSlider.value = zoomPercent; 
+                }
+                if (zoomLabel) { zoomLabel.textContent = zoomPercent + '%'; }
+
+                // Center image on crop box
+                const scaledW = cropSourceImg.width * cropZoom;
+                const scaledH = cropSourceImg.height * cropZoom;
+                cropOffsetX = (scaledW - cropBoxW) / 2 / cropZoom;
+                cropOffsetY = (scaledH - cropBoxH) / 2 / cropZoom;
+
+                drawCropCanvas();
+            });
+        };
+        cropSourceImg.src = imgSrc;
+    }
+
+    function drawCropCanvas() {
+        const canvas = document.getElementById('crop-canvas');
+        if (!canvas || !cropSourceImg) return;
+        const ctx = canvas.getContext('2d');
+        const cw = canvas.width;
+        const ch = canvas.height;
+
+        // Crop box dimensions (centered, 90% width)
+        const cropBoxW = cw * 0.9;
+        const cropBoxH = cropBoxW / CROP_ASPECT;
+        const cropBoxX = (cw - cropBoxW) / 2;
+        const cropBoxY = (ch - cropBoxH) / 2;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, cw, ch);
+
+        // Draw the image scaled & offset so crop box is the visible window
+        const drawW = cropSourceImg.width * cropZoom;
+        const drawH = cropSourceImg.height * cropZoom;
+        const imgX = cropBoxX - cropOffsetX * cropZoom;
+        const imgY = cropBoxY - cropOffsetY * cropZoom;
+        ctx.drawImage(cropSourceImg, imgX, imgY, drawW, drawH);
+
+        // Dark overlay outside crop box
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        // Top
+        ctx.fillRect(0, 0, cw, cropBoxY);
+        // Bottom
+        ctx.fillRect(0, cropBoxY + cropBoxH, cw, ch - cropBoxY - cropBoxH);
+        // Left
+        ctx.fillRect(0, cropBoxY, cropBoxX, cropBoxH);
+        // Right
+        ctx.fillRect(cropBoxX + cropBoxW, cropBoxY, cw - cropBoxX - cropBoxW, cropBoxH);
+
+        // Crop box border
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cropBoxX, cropBoxY, cropBoxW, cropBoxH);
+
+        // Grid lines (rule of thirds)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 3; i++) {
+            // Vertical
+            const gx = cropBoxX + (cropBoxW / 3) * i;
+            ctx.beginPath(); ctx.moveTo(gx, cropBoxY); ctx.lineTo(gx, cropBoxY + cropBoxH); ctx.stroke();
+            // Horizontal
+            const gy = cropBoxY + (cropBoxH / 3) * i;
+            ctx.beginPath(); ctx.moveTo(cropBoxX, gy); ctx.lineTo(cropBoxX + cropBoxW, gy); ctx.stroke();
+        }
+
+        // Size label
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(cropBoxX, cropBoxY + cropBoxH - 22, 90, 22);
+        ctx.fillStyle = '#fff';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(`${OUTPUT_W} × ${OUTPUT_H}`, cropBoxX + 6, cropBoxY + cropBoxH - 7);
+    }
+
+    function getCroppedDataURL() {
+        if (!cropSourceImg) return null;
+        const canvas = document.getElementById('crop-canvas');
+        const cw = canvas.width;
+        const cropBoxW = cw * 0.9;
+        const cropBoxH = cropBoxW / CROP_ASPECT;
+
+        // Source crop region (in original image pixels)
+        const sx = cropOffsetX;
+        const sy = cropOffsetY;
+        const sw = cropBoxW / cropZoom;
+        const sh = cropBoxH / cropZoom;
+
+        // Output canvas
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = OUTPUT_W;
+        outCanvas.height = OUTPUT_H;
+        const outCtx = outCanvas.getContext('2d');
+        outCtx.drawImage(cropSourceImg, sx, sy, sw, sh, 0, 0, OUTPUT_W, OUTPUT_H);
+        return outCanvas.toDataURL('image/jpeg', 0.7);
+    }
+
+    // --- Mouse/Touch drag on canvas ---
+    function setupCropInteractions() {
+        const canvas = document.getElementById('crop-canvas');
+        const zoomSlider = document.getElementById('crop-zoom');
+        const zoomLabel = document.getElementById('crop-zoom-label');
+        if (!canvas) return;
+
+        // Pointer events for drag
+        const startDrag = (clientX, clientY) => {
+            cropDragging = true;
+            cropDragStartX = clientX;
+            cropDragStartY = clientY;
+            cropStartOffX = cropOffsetX;
+            cropStartOffY = cropOffsetY;
+            canvas.style.cursor = 'grabbing';
+        };
+        const moveDrag = (clientX, clientY) => {
+            if (!cropDragging) return;
+            const dx = clientX - cropDragStartX;
+            const dy = clientY - cropDragStartY;
+            cropOffsetX = cropStartOffX - dx / cropZoom;
+            cropOffsetY = cropStartOffY - dy / cropZoom;
+            clampOffset();
+            drawCropCanvas();
+        };
+        const endDrag = () => {
+            cropDragging = false;
+            canvas.style.cursor = 'move';
+        };
+
+        canvas.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', (e) => { moveDrag(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', endDrag);
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchend', endDrag);
+
+        // Zoom slider
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', () => {
+                const pct = parseInt(zoomSlider.value, 10);
+                cropZoom = pct / 100;
+                if (zoomLabel) zoomLabel.textContent = pct + '%';
+                clampOffset();
+                drawCropCanvas();
+            });
+        }
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -5 : 5;
+            const minVal = parseInt(zoomSlider.min, 10) || 10;
+            const maxVal = parseInt(zoomSlider.max, 10) || 200;
+            let pct = Math.round(cropZoom * 100) + delta;
+            pct = Math.max(minVal, Math.min(maxVal, pct));
+            cropZoom = pct / 100;
+            if (zoomSlider) zoomSlider.value = pct;
+            if (zoomLabel) zoomLabel.textContent = pct + '%';
+            clampOffset();
+            drawCropCanvas();
+        }, { passive: false });
+    }
+
+    function clampOffset() {
+        if (!cropSourceImg) return;
+        const canvas = document.getElementById('crop-canvas');
+        const cw = canvas.width;
+        const cropBoxW = cw * 0.9;
+        const cropBoxH = cropBoxW / CROP_ASPECT;
+        const maxOffX = Math.max(0, cropSourceImg.width - cropBoxW / cropZoom);
+        const maxOffY = Math.max(0, cropSourceImg.height - cropBoxH / cropZoom);
+        cropOffsetX = Math.max(0, Math.min(cropOffsetX, maxOffX));
+        cropOffsetY = Math.max(0, Math.min(cropOffsetY, maxOffY));
+    }
+
+    function closeCropModal() {
+        const modal = document.getElementById('modal-crop-banner');
+        if (modal) modal.classList.add('hidden');
+        cropSourceImg = null;
+    }
+
+    // --- Wire up events ---
     if (uploadInput) {
         uploadInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-
-            const currentCount = bannerImages.length;
-            const availableSlots = 10 - currentCount;
-            
-            if (availableSlots <= 0) {
-                showToast('Maksimal 10 foto sudah tercapai. Hapus semua foto jika ingin mengosongkan.', true);
-                e.target.value = '';
-                return;
-            }
-
-            // Batasi sesuai slot tersisa
-            const limitedFiles = files.slice(0, availableSlots);
-            let loaded = 0;
-            const newImages = [...bannerImages];
-            
-            limitedFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200;
-                        const MAX_HEIGHT = 800;
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        if (width > height) {
-                            if (width > MAX_WIDTH) {
-                                height *= MAX_WIDTH / width;
-                                width = MAX_WIDTH;
-                            }
-                        } else {
-                            if (height > MAX_HEIGHT) {
-                                width *= MAX_HEIGHT / height;
-                                height = MAX_HEIGHT;
-                            }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Kompres jadi JPEG 60% agar muat di localStorage
-                        newImages.push(canvas.toDataURL('image/jpeg', 0.6));
-                        loaded++;
-                        
-                        if (loaded === limitedFiles.length) {
-                            bannerImages = newImages; 
-                            try {
-                                localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
-                                renderBanner();
-                                syncBannerToSupabase();
-                                showToast(`${limitedFiles.length} foto background berhasil disimpan.`);
-                            } catch(err) {
-                                showToast('Gagal menyimpan foto. Coba unggah ukuran yang lebih kecil.', true);
-                            }
-                        }
-                    };
-                    img.src = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                openCropModal(ev.target.result);
+            };
+            reader.readAsDataURL(file);
             e.target.value = '';
         });
     }
 
     if (btnClear) {
         btnClear.addEventListener('click', () => {
-            if(confirm('Hapus semua foto background banner?')) {
+            if(confirm('Hapus foto background banner?')) {
                 bannerImages = [];
                 localStorage.removeItem('dxtapremi_banner_bgs');
                 renderBanner();
@@ -491,6 +690,34 @@ function initBannerUploader() {
             }
         });
     }
+
+    // Crop modal buttons
+    const btnCropSave = document.getElementById('btn-crop-save');
+    const btnCropCancel = document.getElementById('btn-crop-cancel');
+    const btnCloseCrop = document.getElementById('btn-close-crop');
+
+    if (btnCropSave) {
+        btnCropSave.addEventListener('click', () => {
+            const croppedData = getCroppedDataURL();
+            if (!croppedData) { closeCropModal(); return; }
+            // Simpan sebagai satu-satunya foto banner
+            bannerImages = [croppedData];
+            try {
+                localStorage.setItem('dxtapremi_banner_bgs', JSON.stringify(bannerImages));
+                renderBanner();
+                syncBannerToSupabase();
+                showToast('Foto banner berhasil disimpan.');
+            } catch(err) {
+                showToast('Gagal menyimpan foto. Coba gambar yang lebih kecil.', true);
+            }
+            closeCropModal();
+        });
+    }
+
+    if (btnCropCancel) btnCropCancel.addEventListener('click', closeCropModal);
+    if (btnCloseCrop) btnCloseCrop.addEventListener('click', closeCropModal);
+
+    setupCropInteractions();
     loadBannerImages();
 }
 
