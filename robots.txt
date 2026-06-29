@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dartaxpremi.my.id/sitemap.xml
+Sitemap: https://www.dartaxpremi.my.id/sitemap.xml
