@@ -24,6 +24,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- SheetJS (XLSX) with Style Support -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css?v=5">
 </head>
 
@@ -530,8 +532,8 @@
                 </div>
                 <form id="form-login" autocomplete="off">
                     <div class="form-group">
-                        <label for="login-username">Username</label>
-                        <input type="text" id="login-username" placeholder="Masukkan username..." required
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" placeholder="Masukkan email..." required
                             style="width: 100%; box-sizing: border-box;">
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">

@@ -270,19 +270,40 @@ function updatePeriodLabel() {
     if (label) label.textContent = formatPeriodLabel(state.activePeriodIndex);
 }
 
-const CREDENTIALS = {
-    "DARTA": "907612",
-    "MATIUS": "091256",
-    "IRWAN": "891283",
-    "OWNER": "569716"
-};
-
 let currentUser = localStorage.getItem('dxtapremi_user') || null;
+let currentSession = null;
 
 // Konfigurasi Database Online Supabase
-// Masukkan URL & Anon Key Supabase Anda di bawah ini agar data sinkron online secara real-time
 const SUPABASE_URL = "https://amvscipdfgtmfftegwqh.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtdnNjaXBkZmd0bWZmdGVnd3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODE0NzUsImV4cCI6MjA5Njc1NzQ3NX0.rtgIbwp6jCiPAY8CszG6LA5uircFrgLssWCRDUBR02c";
+
+// Inisialisasi Supabase JS Client secara aman (jika terblokir adblock/offline)
+let supabaseClient = null;
+if (typeof window.supabase !== 'undefined') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} else {
+    console.warn("Supabase SDK gagal dimuat. Fitur online mungkin terganggu.");
+}
+
+// Helper function untuk mendapatkan auth header yang dinamis (menggunakan JWT user jika login)
+async function getSupabaseHeaders(extraHeaders = {}) {
+    let token = SUPABASE_KEY;
+    if (supabaseClient) {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.access_token) {
+                token = session.access_token;
+            }
+        } catch (err) {
+            console.error("Gagal mendapatkan sesi Supabase:", err);
+        }
+    }
+    return {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${token}`,
+        ...extraHeaders
+    };
+}
 
 // Helper to get local date string YYYY-MM-DD
 // Memiliki batas cut-off jam 14:00 (2 siang). Sebelum jam 2 siang, dianggap masih hari sebelumnya.
@@ -322,10 +343,7 @@ async function loadBannerFromSupabase() {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return;
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_settings?key=eq.banner_images&select=value`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
+            headers: await getSupabaseHeaders()
         });
         if (response.ok) {
             const data = await response.json();
@@ -352,12 +370,10 @@ async function syncBannerToSupabase() {
         };
         const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_settings`, {
             method: 'POST',
-            headers: {
+            headers: await getSupabaseHeaders({
                 'Content-Type': 'application/json',
-                'Prefer': 'resolution=merge-duplicates',
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            },
+                'Prefer': 'resolution=merge-duplicates'
+            }),
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
@@ -772,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCustomEmployees();
 
     // Icons initialization
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     // Set default date to today (local timezone)
     const dateInput = document.getElementById('input-tanggal');
@@ -851,7 +867,7 @@ function initTheme() {
         document.body.classList.remove('light-theme');
         btnToggle.innerHTML = '<i data-lucide="sun"></i>';
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     btnToggle.addEventListener('click', () => {
         if (state.theme === 'dark') {
@@ -864,7 +880,7 @@ function initTheme() {
             btnToggle.innerHTML = '<i data-lucide="sun"></i>';
         }
         localStorage.setItem('theme', state.theme);
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
         showToast('Tema diubah ke ' + (state.theme === 'dark' ? 'Dark Mode' : 'Light Mode'));
     });
 }
@@ -1226,7 +1242,7 @@ function addDriverRow() {
     `;
 
     container.appendChild(row);
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     bindDriverRowEvents(row);
 
@@ -1404,7 +1420,7 @@ function addLoaderRow() {
     `;
 
     container.appendChild(row);
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     // Bind Autocomplete and Delete logic for this new row
     bindLoaderRowEvents(row);
@@ -1585,7 +1601,7 @@ function updateLiveCalculations() {
         liveDriver.classList.add('hidden');
         liveLoader.classList.add('hidden');
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
 
 // Calculation logic
@@ -2016,7 +2032,7 @@ function renderHistoryTable() {
                 </td>
             </tr>
         `;
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
         return;
     }
 
@@ -2217,7 +2233,7 @@ function renderHistoryTable() {
         tbody.appendChild(tr);
     });
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
 
 // ==========================================
@@ -2409,7 +2425,7 @@ function enterEditMode() {
             </button>
         `;
         formHeader.insertAdjacentElement('afterend', banner);
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
         document.getElementById('btn-cancel-edit').addEventListener('click', () => {
             if (confirm('Batalkan pengeditan? Perubahan tidak akan disimpan.')) {
@@ -2422,7 +2438,7 @@ function enterEditMode() {
         });
     }
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
 
 function exitEditMode() {
@@ -2437,7 +2453,7 @@ function exitEditMode() {
     const banner = document.getElementById('edit-mode-banner');
     if (banner) banner.remove();
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
 
 // History tabs filtering
@@ -3312,7 +3328,7 @@ function renderEmployeeList() {
         container.appendChild(item);
     });
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     // Bind delete buttons
     container.querySelectorAll('.btn-remove-emp').forEach(btn => {
@@ -3364,10 +3380,7 @@ async function loadEmployeesFromSupabase() {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return;
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_employees?select=*&order=created_at.desc`, {
-            headers: {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${SUPABASE_KEY}`
-            }
+            headers: await getSupabaseHeaders()
         });
         if (!response.ok) return;
         const data = await response.json();
@@ -3425,10 +3438,7 @@ async function deleteEmployeeOnline(nik) {
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_employees?nik=eq.${encodeURIComponent(nik)}`, {
             method: 'DELETE',
-            headers: {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${SUPABASE_KEY}`
-            }
+            headers: await getSupabaseHeaders()
         });
         if (!response.ok) console.error('Gagal menghapus pekerja dari Supabase');
     } catch (err) {
@@ -3448,15 +3458,18 @@ function initAuth() {
         if (currentUser) {
             // Logout
             if (confirm('Apakah Anda yakin ingin keluar?')) {
-                currentUser = null;
-                localStorage.removeItem('dxtapremi_user');
-                showToast('Anda telah keluar.');
-                updateAuthUI();
+                supabaseClient.auth.signOut().then(() => {
+                    currentUser = null;
+                    currentSession = null;
+                    localStorage.removeItem('dxtapremi_user');
+                    showToast('Anda telah keluar.');
+                    updateAuthUI();
+                });
             }
         } else {
             // Open login modal
             modalLogin.classList.remove('hidden');
-            document.getElementById('login-username').focus();
+            document.getElementById('login-email').focus();
         }
     });
 
@@ -3474,19 +3487,41 @@ function initAuth() {
         }
     });
 
-    formLogin.addEventListener('submit', (e) => {
+    formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const usernameInput = document.getElementById('login-username').value.trim().toUpperCase();
+        
+        // Cek ID input yang digunakan (login-email / login-username)
+        const emailInputEl = document.getElementById('login-email') || document.getElementById('login-username');
+        const emailInput = emailInputEl.value.trim();
         const passwordInput = document.getElementById('login-password').value.trim();
+        
+        const btnSubmit = formLogin.querySelector('button[type="submit"]');
+        const originalText = btnSubmit.innerHTML;
+        btnSubmit.innerHTML = '<i data-lucide="loader"></i> Memproses...';
+        btnSubmit.disabled = true;
 
-        if (CREDENTIALS[usernameInput] && CREDENTIALS[usernameInput] === passwordInput) {
-            currentUser = usernameInput;
+        // Menggunakan Supabase Auth
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: emailInput,
+            password: passwordInput,
+        });
+        
+        btnSubmit.innerHTML = originalText;
+        btnSubmit.disabled = false;
+        if (window.lucide) lucide.createIcons();
+
+        if (error) {
+            showToast('Email atau Password salah!', true);
+        } else if (data.session) {
+            currentSession = data.session;
+            // Gunakan nama depan atau email sebagai identifier lokal
+            currentUser = data.user.email.split('@')[0].toUpperCase();
             localStorage.setItem('dxtapremi_user', currentUser);
             showToast(`Selamat datang, ${currentUser}!`);
             closeLogin();
             updateAuthUI();
-        } else {
-            showToast('Username atau Password salah!', true);
+            // Muat ulang data dengan token baru
+            loadRecords(true);
         }
     });
 
@@ -3565,7 +3600,7 @@ function updateAuthUI() {
         });
     }
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     // Toggle column header visibility
     const colActions = document.querySelectorAll('.col-action');
@@ -3588,10 +3623,7 @@ function updateAuthUI() {
 async function fetchOnlineRecords() {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return null;
     const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?select=*&order=date.asc,id.asc`, {
-        headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-        }
+        headers: await getSupabaseHeaders()
     });
     if (!response.ok) throw new Error("Gagal mengambil data dari Supabase");
     const data = await response.json();
@@ -3677,10 +3709,7 @@ async function deleteOnlineRecord(id) {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return false;
     const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?id=eq.${id}`, {
         method: "DELETE",
-        headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-        }
+        headers: await getSupabaseHeaders()
     });
     if (!response.ok) throw new Error("Gagal menghapus data di Supabase");
     return true;
@@ -3690,10 +3719,7 @@ async function deleteOnlineRecordsByDate(startDate, endDate) {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return false;
     const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?date=gte.${startDate}&date=lte.${endDate}`, {
         method: "DELETE",
-        headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-        }
+        headers: await getSupabaseHeaders()
     });
     if (!response.ok) throw new Error("Gagal menghapus data di Supabase");
     return true;
@@ -3940,10 +3966,7 @@ async function deleteMyOnlineRecords(username) {
     if (!SUPABASE_URL || SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL") return false;
     const response = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?created_by=eq.${username}`, {
         method: "DELETE",
-        headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-        }
+        headers: await getSupabaseHeaders()
     });
     if (!response.ok) throw new Error("Gagal menghapus data di Supabase");
     return true;
