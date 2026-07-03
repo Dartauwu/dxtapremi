@@ -534,7 +534,7 @@
                     <div class="form-group">
                         <label for="login-email">Email</label>
                         <input type="email" id="login-email" placeholder="Masukkan email..." required
-                            style="width: 100%; box-sizing: border-box;">
+                            autocomplete="email" style="width: 100%; box-sizing: border-box;">
                     </div>
                     <div class="form-group" style="margin-top: 1rem;">
                         <label for="login-password">Password</label>
@@ -634,10 +634,14 @@
                     <button id="btn-close-owner-report" class="btn-close">&times;</button>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;" id="owner-report-desc">
                         Total pendapatan pekerja dari tanggal sebelum 26 bulan ini.
                     </p>
-                    <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+                    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                        <button id="btn-owner-report-period" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
+                            <i data-lucide="calendar" style="width:14px;height:14px;"></i>
+                            <span id="owner-report-period-label">Memuat periode...</span>
+                        </button>
                         <button id="btn-owner-report-excel" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
                             <i data-lucide="file-spreadsheet"></i> Unduh Excel Pekerja
                         </button>

@@ -3458,13 +3458,21 @@ function initAuth() {
         if (currentUser) {
             // Logout
             if (confirm('Apakah Anda yakin ingin keluar?')) {
-                supabaseClient.auth.signOut().then(() => {
+                if (supabaseClient) {
+                    supabaseClient.auth.signOut().finally(() => {
+                        currentUser = null;
+                        currentSession = null;
+                        localStorage.removeItem('dxtapremi_user');
+                        showToast('Anda telah keluar.');
+                        updateAuthUI();
+                    });
+                } else {
                     currentUser = null;
                     currentSession = null;
                     localStorage.removeItem('dxtapremi_user');
                     showToast('Anda telah keluar.');
                     updateAuthUI();
-                });
+                }
             }
         } else {
             // Open login modal
@@ -3490,9 +3498,7 @@ function initAuth() {
     formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Cek ID input yang digunakan (login-email / login-username)
-        const emailInputEl = document.getElementById('login-email') || document.getElementById('login-username');
-        const emailInput = emailInputEl.value.trim();
+        const emailInput = document.getElementById('login-email').value.trim();
         const passwordInput = document.getElementById('login-password').value.trim();
         
         const btnSubmit = formLogin.querySelector('button[type="submit"]');
@@ -3500,7 +3506,15 @@ function initAuth() {
         btnSubmit.innerHTML = '<i data-lucide="loader"></i> Memproses...';
         btnSubmit.disabled = true;
 
-        // Menggunakan Supabase Auth
+        // Pastikan Supabase siap
+        if (!supabaseClient) {
+            showToast('Koneksi ke server gagal. Periksa internet atau nonaktifkan AdBlocker, lalu muat ulang halaman.', true);
+            btnSubmit.innerHTML = originalText;
+            btnSubmit.disabled = false;
+            return;
+        }
+
+        // Login via Supabase Auth
         const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: emailInput,
             password: passwordInput,
@@ -3514,13 +3528,11 @@ function initAuth() {
             showToast('Email atau Password salah!', true);
         } else if (data.session) {
             currentSession = data.session;
-            // Gunakan nama depan atau email sebagai identifier lokal
             currentUser = data.user.email.split('@')[0].toUpperCase();
             localStorage.setItem('dxtapremi_user', currentUser);
             showToast(`Selamat datang, ${currentUser}!`);
             closeLogin();
             updateAuthUI();
-            // Muat ulang data dengan token baru
             loadRecords(true);
         }
     });
@@ -3790,19 +3802,26 @@ function initOwnerReport() {
     const btnClose = document.getElementById('btn-close-owner-report');
     const btnExcel = document.getElementById('btn-owner-report-excel');
     const reportBody = document.getElementById('owner-report-body');
+    const btnPeriod = document.getElementById('btn-owner-report-period');
+    const periodLabel = document.getElementById('owner-report-period-label');
+    const descEl = document.getElementById('owner-report-desc');
 
     if (!btnOpen || !modal) return;
 
     let reportData = []; // Store the data to be exported
+    let ownerReportPeriodIndex = 0; // 0 = periode sekarang
 
-    btnOpen.addEventListener('click', () => {
-        if (currentUser !== 'OWNER') return;
+    function updateOwnerPeriodLabel() {
+        if (periodLabel) periodLabel.textContent = formatPeriodLabel(ownerReportPeriodIndex);
+    }
 
-        // Generate report data
-        const today = new Date();
-        const currentMonth = today.getMonth(); // 0-11
-        const currentYear = today.getFullYear();
-        const cutoffDate = new Date(currentYear, currentMonth, 26); // Before 26th of this month
+    function generateOwnerReport() {
+        const { start: periodStart, end: periodEnd } = getPeriodDates(ownerReportPeriodIndex);
+
+        // Update description text
+        if (descEl) {
+            descEl.textContent = `Total pendapatan pekerja pada ${formatPeriodLabel(ownerReportPeriodIndex)}.`;
+        }
 
         const summaryMap = {};
 
@@ -3810,8 +3829,8 @@ function initOwnerReport() {
             const dateParts = rec.date.split('-');
             const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
 
-            // Only include records before the 25th of the current month
-            if (recDateObj < cutoffDate) {
+            // Only include records within the selected period
+            if (recDateObj >= periodStart && recDateObj <= periodEnd) {
                 // Add drivers (Exclude Dump Truck and Kontraktor)
                 if (rec.category !== 'dump-truck' && rec.carType !== 'MOBIL KONTRAKTOR') {
                     rec.drivers.forEach(driver => {
@@ -3854,7 +3873,7 @@ function initOwnerReport() {
         if (reportFoot) reportFoot.innerHTML = '';
 
         if (reportData.length === 0) {
-            reportBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1rem; color: var(--text-muted);">Tidak ada data hasil kerja sebelum tanggal 26 bulan ini.</td></tr>';
+            reportBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1rem; color: var(--text-muted);">Tidak ada data untuk periode ini.</td></tr>';
         } else {
             let sumTotal = 0;
             let sumFee = 0;
@@ -3890,8 +3909,27 @@ function initOwnerReport() {
             }
         }
 
+        if (window.lucide) lucide.createIcons();
+    }
+
+    btnOpen.addEventListener('click', () => {
+        if (currentUser !== 'OWNER') return;
+        ownerReportPeriodIndex = 0;
+        updateOwnerPeriodLabel();
+        generateOwnerReport();
         modal.classList.remove('hidden');
     });
+
+    // Period picker button
+    if (btnPeriod) {
+        btnPeriod.addEventListener('click', () => {
+            openPeriodPicker(btnPeriod, ownerReportPeriodIndex, (newIndex) => {
+                ownerReportPeriodIndex = newIndex;
+                updateOwnerPeriodLabel();
+                generateOwnerReport();
+            });
+        });
+    }
 
     btnClose.addEventListener('click', () => {
         modal.classList.add('hidden');
@@ -3952,8 +3990,9 @@ function initOwnerReport() {
                 { wch: 22 }, // PENDAPATAN BERSIH
             ];
 
+            const periodStr = formatPeriodLabel(ownerReportPeriodIndex).replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             XLSX.utils.book_append_sheet(wb, ws, "Laporan Pendapatan Pekerja");
-            XLSX.writeFile(wb, "Laporan_Pendapatan_Pekerja_Owner.xlsx");
+            XLSX.writeFile(wb, `Laporan_Pendapatan_Pekerja_${periodStr}.xlsx`);
             showToast('File Excel berhasil diunduh!');
         } catch (e) {
             console.error(e);
