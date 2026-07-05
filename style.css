@@ -660,6 +660,7 @@ label {
 }
 
 input[type="text"],
+input[type="email"],
 input[type="number"],
 input[type="date"],
 input[type="password"] {
@@ -681,6 +682,7 @@ input[type="text"] {
 
 
 input[type="text"]:focus,
+input[type="email"]:focus,
 input[type="number"]:focus,
 input[type="date"]:focus,
 input[type="password"]:focus {
@@ -2422,6 +2424,7 @@ img, video, iframe, table {
     }
 
     input[type="text"],
+    input[type="email"],
     input[type="number"],
     input[type="date"],
     input[type="password"],
@@ -2456,6 +2459,73 @@ img, video, iframe, table {
     background: rgba(16, 185, 129, 0.08);
     border-color: rgba(16, 185, 129, 0.3);
     color: var(--primary);
+}
+
+/* Header Dropdown Menu */
+.header-dropdown-wrapper {
+    position: relative;
+}
+
+.header-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    min-width: 180px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-fast);
+}
+
+.header-dropdown:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    width: 100%;
+}
+
+.dropdown-item i {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+}
+
+.dropdown-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--primary);
+}
+
+.dropdown-item:hover i {
+    color: var(--primary);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    border: none;
+    margin: 0.25rem 0;
 }
 
 /* ==========================================================

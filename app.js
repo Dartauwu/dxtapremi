@@ -844,6 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initOwnerReport();
     initBuahManual();
     updatePeriodLabel();
+    initHeaderDropdown();
 
     // Bind refresh button
     const btnRefresh = document.getElementById('btn-refresh-data');
@@ -868,29 +869,54 @@ function initTheme() {
     const localTheme = localStorage.getItem('theme') || 'dark';
 
     state.theme = localTheme;
-    if (state.theme === 'light') {
-        document.body.classList.add('light-theme');
-        btnToggle.innerHTML = '<i data-lucide="moon"></i>';
-    } else {
-        document.body.classList.remove('light-theme');
-        btnToggle.innerHTML = '<i data-lucide="sun"></i>';
+    
+    function updateThemeUI() {
+        if (state.theme === 'light') {
+            document.body.classList.add('light-theme');
+            btnToggle.innerHTML = '<i data-lucide="moon"></i> <span id="theme-btn-text">Ubah Tema (Dark)</span>';
+        } else {
+            document.body.classList.remove('light-theme');
+            btnToggle.innerHTML = '<i data-lucide="sun"></i> <span id="theme-btn-text">Ubah Tema (Light)</span>';
+        }
+        if (window.lucide) lucide.createIcons();
     }
-    if (window.lucide) lucide.createIcons();
+    
+    updateThemeUI();
 
     btnToggle.addEventListener('click', () => {
-        if (state.theme === 'dark') {
-            state.theme = 'light';
-            document.body.classList.add('light-theme');
-            btnToggle.innerHTML = '<i data-lucide="moon"></i>';
-        } else {
-            state.theme = 'dark';
-            document.body.classList.remove('light-theme');
-            btnToggle.innerHTML = '<i data-lucide="sun"></i>';
-        }
+        state.theme = (state.theme === 'dark') ? 'light' : 'dark';
+        updateThemeUI();
         localStorage.setItem('theme', state.theme);
-        if (window.lucide) lucide.createIcons();
         showToast('Tema diubah ke ' + (state.theme === 'dark' ? 'Dark Mode' : 'Light Mode'));
     });
+}
+
+// Header Dropdown
+function initHeaderDropdown() {
+    const btnOverflow = document.getElementById('btn-header-overflow');
+    const dropdownMenu = document.getElementById('header-dropdown-menu');
+
+    if (btnOverflow && dropdownMenu) {
+        btnOverflow.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!btnOverflow.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+        
+        // Close when clicking an item inside
+        const items = dropdownMenu.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            item.addEventListener('click', () => {
+                dropdownMenu.classList.add('hidden');
+            });
+        });
+    }
 }
 
 // Navigation (Menu Dashboard <-> Form)

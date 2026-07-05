@@ -45,21 +45,29 @@
                     <p>Sistem Pencatatan Premi Pekerja</p>
                 </div>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="position: relative; display: flex; align-items: center; gap: 0.5rem;">
                 <button id="btn-cek-penghasilan" class="btn-icon" title="Cek Total Penghasilan">
                     <i data-lucide="wallet"></i>
                 </button>
-                <button id="btn-add-employee-modal" class="btn-icon hidden" title="Tambah Pekerja Baru">
-                    <i data-lucide="user-plus"></i>
-                </button>
-                <button id="btn-theme-toggle" class="btn-icon" title="Ubah Tema">
-                    <i data-lucide="sun"></i>
-                </button>
-                <button id="btn-login-logout" class="btn-primary"
-                    style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
-                    <i data-lucide="log-in"></i>
-                    <span id="login-btn-text">Masuk</span>
-                </button>
+                
+                <div class="header-dropdown-wrapper">
+                    <button id="btn-header-overflow" class="btn-icon" title="Menu Lainnya">
+                        <i data-lucide="more-vertical"></i>
+                    </button>
+                    
+                    <div id="header-dropdown-menu" class="header-dropdown hidden">
+                        <button id="btn-add-employee-modal" class="dropdown-item hidden">
+                            <i data-lucide="user-plus"></i> Tambah Pekerja
+                        </button>
+                        <button id="btn-theme-toggle" class="dropdown-item">
+                            <i data-lucide="sun"></i> <span id="theme-btn-text">Ubah Tema</span>
+                        </button>
+                        <hr class="dropdown-divider">
+                        <button id="btn-login-logout" class="dropdown-item">
+                            <i data-lucide="log-in"></i> <span id="login-btn-text">Masuk</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 
