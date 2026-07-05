@@ -80,6 +80,7 @@ const state = {
     theme: 'dark',
     activeCategory: '', // 'dump-truck', 'tractor', 'brondolan'
     records: [],
+    buahRecords: [],    // Pengeluaran Buah Manual records
     editingRecordId: null, // ID record yang sedang diedit (null = mode baru)
     rates: {
         'dump-truck': {
@@ -402,9 +403,13 @@ function renderBanner() {
 
     overlay.style.display = 'block';
 
-    track.innerHTML = bannerImages.map((b64) => `
-        <div class="banner-slide" style="flex: 0 0 100%; height: 100%; background-image: url('${b64}'); background-size: cover; background-repeat: no-repeat; background-position: center;"></div>
+    track.innerHTML = bannerImages.map((b64, i) => `
+        <div class="banner-slide" id="slide-${i}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('${b64}'); background-size: cover; background-repeat: no-repeat; background-position: center; opacity: ${i === 0 ? 1 : 0}; transition: opacity 1.5s ease-in-out;"></div>
     `).join('');
+
+    // Hide SVG illustration when photos exist so they are fully visible
+    const svgIll = document.querySelector('.banner-illustration');
+    if (svgIll) svgIll.style.display = bannerImages.length > 0 ? 'none' : 'block';
 
     // Toggle pause on click
     overlay.onclick = () => {
@@ -416,15 +421,15 @@ function renderBanner() {
     
     if (bannerImages.length > 1) {
         currentBannerIndex = 0;
-        track.style.transform = `translateX(0%)`;
         
         bannerInterval = setInterval(() => {
             if (isBannerPaused) return;
+            const oldIndex = currentBannerIndex;
             currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
-            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
-        }, 5000); // Geser tiap 5 detik
-    } else {
-        track.style.transform = `translateX(0%)`;
+            
+            document.getElementById(`slide-${oldIndex}`).style.opacity = '0';
+            document.getElementById(`slide-${currentBannerIndex}`).style.opacity = '1';
+        }, 5000); // Crossfade tiap 5 detik
     }
 }
 
@@ -837,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCekPenghasilan();
     initOwnerDeleteModal();
     initOwnerReport();
+    initBuahManual();
     updatePeriodLabel();
 
     // Bind refresh button
@@ -844,11 +850,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnRefresh) {
         btnRefresh.addEventListener('click', () => {
             loadRecords(true);
+            loadBuahRecords(true);
         });
     }
 
     // Load records from localStorage / Supabase
     loadRecords();
+    loadBuahRecords();
 
     // Sync employees from Supabase online database
     loadEmployeesFromSupabase();
@@ -960,8 +968,11 @@ function customizeFormUI(category) {
     let ratesHTML = '';
 
     const groupCarType = document.getElementById('group-car-type');
+    const groupBrondolanSent = document.getElementById('group-brondolan-sent');
+    
     if (category === 'dump-truck') {
         if (groupCarType) groupCarType.classList.remove('hidden');
+        if (groupBrondolanSent) groupBrondolanSent.classList.remove('hidden');
         formTitle.textContent = "Input Loading Bak Mati / Dump Truck";
         labelVehicle.textContent = "No. Polisi Dump Truck";
         inputVehicle.placeholder = "BK 8241 XY";
@@ -1000,6 +1011,7 @@ function customizeFormUI(category) {
         }
     } else if (category === 'tractor') {
         if (groupCarType) groupCarType.classList.add('hidden');
+        if (groupBrondolanSent) groupBrondolanSent.classList.add('hidden');
         formTitle.textContent = "Input Loading Traktor / Operator";
         labelVehicle.textContent = "No. Lambung Traktor";
         inputVehicle.placeholder = "TR-04";
@@ -1063,6 +1075,7 @@ function customizeFormUI(category) {
         if (gpPemuat2) gpPemuat2.classList.add('hidden');
     } else if (category === 'brondolan') {
         if (groupCarType) groupCarType.classList.add('hidden');
+        if (groupBrondolanSent) groupBrondolanSent.classList.add('hidden');
         formTitle.textContent = "Input Ketek Brondolan";
         labelVehicle.textContent = "Keterangan / Lokasi";
         inputVehicle.placeholder = "Blok / Area brondolan";
@@ -1688,9 +1701,15 @@ function calculateCurrentPremi() {
     }
 
     let carType = '';
+    let brondolanSentKg = 0;
     if (category === 'dump-truck') {
         const selectCarType = document.getElementById('input-car-type');
         carType = selectCarType ? selectCarType.value : 'DUMP TRUCK';
+        
+        const brondolanSentEl = document.getElementById('input-brondolan-sent');
+        if (brondolanSentEl) {
+            brondolanSentKg = parseFloat(brondolanSentEl.value) || 0;
+        }
     }
 
     // Compute Premiums
@@ -1795,6 +1814,7 @@ function calculateCurrentPremi() {
         drivers: driversList,
         loaders: loadersList,
         totalPremi: totalPremiGrup,
+        brondolanSentKg: brondolanSentKg,
         createdBy: currentUser || 'Public'
     };
 }
@@ -2002,6 +2022,12 @@ function renderHistoryTable() {
     const tbody = document.getElementById('history-table-body');
     tbody.innerHTML = '';
 
+    // If Buah Manual tab is active, delegate to buah render
+    if (state.activeTab === 'tab-buah-manual') {
+        renderBuahHistoryTable();
+        return;
+    }
+
     // Get period date range
     const { start: periodStart, end: periodEnd } = getPeriodDates(state.activePeriodIndex);
 
@@ -2109,6 +2135,7 @@ function renderHistoryTable() {
                     <strong>Pemuat:</strong> ${tonasePemuat.toFixed(3)}T 
                     ${potonganPemuat > 0 ? `<br><small style="color:var(--text-muted)">Pot: ${potonganPemuat.toFixed(3)}T | Ef: ${effPemuatTon.toFixed(3)}T</small>` : ''}
                 </div>
+                ${rec.brondolanSentKg ? `<div style="margin-top:4px; font-size:0.85em;"><strong style="color:var(--accent-gold);">Brondolan:</strong> ${rec.brondolanSentKg} Kg</div>` : ''}
             `;
         } else if (rec.category === 'tractor') {
             const totalDriverTon = rec.tonnage || 0;
@@ -2268,10 +2295,16 @@ function editRecord(recordId) {
     document.getElementById('input-divisi').value = rec.division;
     document.getElementById('input-vehicle').value = rec.vehicle;
 
-    // Set car type for dump truck
-    if (rec.category === 'dump-truck' && rec.carType) {
-        const selectCarType = document.getElementById('input-car-type');
-        if (selectCarType) selectCarType.value = rec.carType;
+    // Set car type and brondolanSentKg for dump truck
+    if (rec.category === 'dump-truck') {
+        if (rec.carType) {
+            const selectCarType = document.getElementById('input-car-type');
+            if (selectCarType) selectCarType.value = rec.carType;
+        }
+        if (rec.brondolanSentKg !== undefined) {
+            const brSentInput = document.getElementById('input-brondolan-sent');
+            if (brSentInput) brSentInput.value = rec.brondolanSentKg;
+        }
     }
 
     // Set rates from record
@@ -2550,6 +2583,30 @@ function updateStats() {
     const totalRecords = state.records.length;
     const totalPremi = state.records.reduce((acc, curr) => acc + curr.totalPremi, 0);
 
+    // Calculate Brondolan Stats
+    let rawBronTerkumpulToday = 0;
+    let rawBronTerkumpulTotal = 0;
+    let bronTerkirimToday = 0;
+    let bronTerkirimTotal = 0;
+
+    state.records.forEach(rec => {
+        let isToday = (rec.date === today);
+        if (rec.category === 'brondolan') {
+            rawBronTerkumpulTotal += (rec.tonnage || 0); // tonnage stores total kg for brondolan
+            if (isToday) rawBronTerkumpulToday += (rec.tonnage || 0);
+        } else if (rec.category === 'dump-truck') {
+            bronTerkirimTotal += (rec.brondolanSentKg || 0);
+            if (isToday) bronTerkirimToday += (rec.brondolanSentKg || 0);
+        }
+    });
+    
+    // Brondolan Terkumpul is now a balance (Sisa = Dikumpulkan - Dikirim)
+    const bronTerkumpulTotal = Math.max(0, rawBronTerkumpulTotal - bronTerkirimTotal);
+    
+    // For today, it's also a balance if they want it dynamically deducted, or just the net difference. 
+    // Usually, sisa hari ini = dikumpulkan hari ini - dikirim hari ini.
+    const bronTerkumpulToday = Math.max(0, rawBronTerkumpulToday - bronTerkirimToday);
+
     let dateRangeStr = 'Belum ada data';
     if (state.records.length > 0) {
         const dates = state.records.map(r => r.date).sort();
@@ -2582,6 +2639,17 @@ function updateStats() {
     if (elSubPremi) {
         elSubPremi.textContent = `Total ${dateRangeStr}: ${formatRupiah(totalPremi)}`;
     }
+
+    // Update Brondolan DOM elements
+    const elBronTerkumpul = document.getElementById('stat-bron-terkumpul');
+    const elBronTerkumpulSub = document.getElementById('stat-sub-bron-terkumpul');
+    if (elBronTerkumpul) elBronTerkumpul.textContent = `${bronTerkumpulToday.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkumpulSub) elBronTerkumpulSub.textContent = `Total ${dateRangeStr}: ${bronTerkumpulTotal.toLocaleString('id-ID')} Kg`;
+
+    const elBronTerkirim = document.getElementById('stat-bron-terkirim');
+    const elBronTerkirimSub = document.getElementById('stat-sub-bron-terkirim');
+    if (elBronTerkirim) elBronTerkirim.textContent = `${bronTerkirimToday.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkirimSub) elBronTerkirimSub.textContent = `Total ${dateRangeStr}: ${bronTerkirimTotal.toLocaleString('id-ID')} Kg`;
 
     // Update per-category card stats
     updateCardStats();
@@ -2799,8 +2867,8 @@ function exportToExcel(periodIndex = 0) {
         const dtAOA = [];
         const dtMerges = [];
 
-        // Header tunggal untuk tabel gabungan
-        dtAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'ID', 'NAMA', 'TONASE LOADING TOTAL', 'POTONGAN', 'TON BERSIH', 'PREMI/TON', 'JML HK', 'HASIL/HK']);
+        // Header tunggal untuk tabel gabungan (tambah BRONDOLAN)
+        dtAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'ID', 'NAMA', 'TONASE LOADING TOTAL', 'POTONGAN', 'TON BERSIH', 'BRONDOLAN (KG)', 'PREMI/TON', 'JML HK', 'HASIL/HK']);
 
         let dtNo = 1;
         const kontraktorDriverRows = [];
@@ -2808,6 +2876,7 @@ function exportToExcel(periodIndex = 0) {
             const recordStartRow = dtAOA.length;
             const dateStrFormatted = formatTanggalIndo(rec.date);
             const isKontraktor = (rec.carType === 'MOBIL KONTRAKTOR');
+            let hasOutputBrondolan = false; // To ensure we only write Brondolan kg once per record
 
             // --- Data Pemuat (Loaders) ---
             const tonsForLoader = (rec.tonnagePemuat !== undefined && rec.tonnagePemuat > 0)
@@ -2818,6 +2887,9 @@ function exportToExcel(periodIndex = 0) {
 
             const loaderStartRow = dtAOA.length;
             rec.loaders.forEach((loader, lIdx) => {
+                const bronVal = (lIdx === 0 && !hasOutputBrondolan && rec.brondolanSentKg) ? rec.brondolanSentKg : null;
+                if (bronVal) hasOutputBrondolan = true;
+
                 dtAOA.push([
                     dtNo++,
                     lIdx === 0 ? dateStrFormatted : null,   // WAKTU (merged seluruh record)
@@ -2827,6 +2899,7 @@ function exportToExcel(periodIndex = 0) {
                     lIdx === 0 ? tonsForLoader : null,       // TONASE LOADING TOTAL (merged pemuat)
                     lIdx === 0 ? (potonganPemuatVal > 0 ? potonganPemuatVal : null) : null, // POTONGAN
                     lIdx === 0 ? effectiveTonnageLoader : null, // TON BERSIH
+                    bronVal,                                 // BRONDOLAN (KG)
                     lIdx === 0 ? rec.rates.loader : null,    // PREMI/TON
                     lIdx === 0 ? rec.loaders.length : null,  // JML HK (angka biasa, bukan Rp)
                     loader.amount                            // HASIL/HK
@@ -2836,7 +2909,7 @@ function exportToExcel(periodIndex = 0) {
 
             // Merge kolom pemuat (TONASE s/d JML HK) jika pemuat > 1
             if (rec.loaders.length > 1) {
-                [5, 6, 7, 8, 9].forEach(c => {
+                [5, 6, 7, 9, 10].forEach(c => { // skip 8 (BRONDOLAN) because it is merged for the whole record
                     dtMerges.push({ s: { r: loaderStartRow, c: c }, e: { r: loaderEndRow, c: c } });
                 });
             }
@@ -2846,6 +2919,9 @@ function exportToExcel(periodIndex = 0) {
             const totalDriverTon = rec.drivers.reduce((a, d) => a + (d.tonnage || 0), 0);
 
             rec.drivers.forEach(driver => {
+                const bronVal = (!hasOutputBrondolan && rec.brondolanSentKg) ? rec.brondolanSentKg : null;
+                if (bronVal) hasOutputBrondolan = true;
+
                 if (isKontraktor) {
                     // KONTRAKTOR: hanya tampilkan tonase, tanpa premi
                     dtAOA.push([
@@ -2857,6 +2933,7 @@ function exportToExcel(periodIndex = 0) {
                         driver.tonnage || null,               // TONASE (tonase saja)
                         null,                                // POTONGAN
                         null,                                // TON BERSIH
+                        bronVal,                             // BRONDOLAN (KG)
                         null,                                // PREMI/TON
                         null,                                // JML HK
                         null                                 // HASIL/HK (tidak ada premi)
@@ -2878,6 +2955,7 @@ function exportToExcel(periodIndex = 0) {
                         driver.tonnage,                      // TONASE
                         potPerDriver || null,                 // POTONGAN
                         effTon,                              // TON BERSIH
+                        bronVal,                             // BRONDOLAN (KG)
                         rec.rates.driver,                    // PREMI/TON
                         null,                                // JML HK
                         driver.amount                        // HASIL/HK (premi supir)
@@ -2887,10 +2965,13 @@ function exportToExcel(periodIndex = 0) {
 
             const recordEndRow = dtAOA.length - 1;
 
-            // Merge WAKTU & DICATAT OLEH untuk seluruh record (pemuat + supir)
+            // Merge WAKTU, DICATAT OLEH, dan BRONDOLAN untuk seluruh record (pemuat + supir)
             if (recordEndRow > recordStartRow) {
-                dtMerges.push({ s: { r: recordStartRow, c: 1 }, e: { r: recordEndRow, c: 1 } });
-                dtMerges.push({ s: { r: recordStartRow, c: 2 }, e: { r: recordEndRow, c: 2 } });
+                dtMerges.push({ s: { r: recordStartRow, c: 1 }, e: { r: recordEndRow, c: 1 } }); // WAKTU
+                dtMerges.push({ s: { r: recordStartRow, c: 2 }, e: { r: recordEndRow, c: 2 } }); // DICATAT OLEH
+                if (rec.brondolanSentKg) {
+                    dtMerges.push({ s: { r: recordStartRow, c: 8 }, e: { r: recordEndRow, c: 8 } }); // BRONDOLAN
+                }
             }
         });
 
@@ -2912,15 +2993,24 @@ function exportToExcel(periodIndex = 0) {
                 const addr = XLSX.utils.encode_cell({ r, c });
                 if (wsDT[addr] && wsDT[addr].t === 'n') wsDT[addr].z = '#,##0.000';
             });
-            // Rupiah: PREMI/TON (8)
-            const addrPremi = XLSX.utils.encode_cell({ r, c: 8 });
+            // Rupiah: PREMI/TON (9 shifted from 8)
+            const addrPremi = XLSX.utils.encode_cell({ r, c: 9 });
             if (wsDT[addrPremi] && wsDT[addrPremi].t === 'n') wsDT[addrPremi].z = '"Rp "#,##0';
-            // JML HK (9): angka biasa (TANPA Rp)
-            const addrJmlHK = XLSX.utils.encode_cell({ r, c: 9 });
+            // JML HK (10 shifted from 9): angka biasa (TANPA Rp)
+            const addrJmlHK = XLSX.utils.encode_cell({ r, c: 10 });
             if (wsDT[addrJmlHK] && wsDT[addrJmlHK].t === 'n') wsDT[addrJmlHK].z = '#,##0';
-            // HASIL/HK (10): Rupiah
-            const addrHasil = XLSX.utils.encode_cell({ r, c: 10 });
+            // HASIL/HK (11 shifted from 10): Rupiah
+            const addrHasil = XLSX.utils.encode_cell({ r, c: 11 });
             if (wsDT[addrHasil] && wsDT[addrHasil].t === 'n') wsDT[addrHasil].z = '"Rp "#,##0';
+
+            // BRONDOLAN (8): Background Merah
+            const addrBron = XLSX.utils.encode_cell({ r, c: 8 });
+            if (wsDT[addrBron] && wsDT[addrBron].t === 'n') {
+                wsDT[addrBron].s = {
+                    fill: { fgColor: { rgb: "FFFF0000" } }, // Red background
+                    font: { color: { rgb: "FF000000" } }    // Black text
+                };
+            }
         }
 
         wsDT['!cols'] = [
@@ -3650,6 +3740,7 @@ async function fetchOnlineRecords() {
         potonganHK: (item.rates && item.rates.potonganHK) ? parseFloat(item.rates.potonganHK) : 0,
         tonnagePemuat: (item.rates && item.rates.tonnagePemuat) ? parseFloat(item.rates.tonnagePemuat) : 0,
         potonganPemuat: (item.rates && item.rates.potonganPemuat) ? parseFloat(item.rates.potonganPemuat) : 0,
+        brondolanSentKg: (item.rates && item.rates.brondolanSentKg) ? parseFloat(item.rates.brondolanSentKg) : 0,
         rates: item.rates,
         drivers: item.drivers,
         loaders: item.loaders,
@@ -3668,7 +3759,7 @@ async function insertOnlineRecord(rec) {
         vehicle: rec.vehicle,
         car_type: rec.carType,
         tonnage: rec.tonnage,
-        rates: { ...rec.rates, potonganHK: rec.potonganHK || 0, tonnagePemuat: rec.tonnagePemuat || 0, potonganPemuat: rec.potonganPemuat || 0 },
+        rates: { ...rec.rates, potonganHK: rec.potonganHK || 0, tonnagePemuat: rec.tonnagePemuat || 0, potonganPemuat: rec.potonganPemuat || 0, brondolanSentKg: rec.brondolanSentKg || 0 },
         drivers: rec.drivers,
         loaders: rec.loaders,
         total_premi: rec.totalPremi,
@@ -3697,7 +3788,7 @@ async function updateOnlineRecord(rec) {
         vehicle: rec.vehicle,
         car_type: rec.carType,
         tonnage: rec.tonnage,
-        rates: { ...rec.rates, potonganHK: rec.potonganHK || 0, tonnagePemuat: rec.tonnagePemuat || 0, potonganPemuat: rec.potonganPemuat || 0 },
+        rates: { ...rec.rates, potonganHK: rec.potonganHK || 0, tonnagePemuat: rec.tonnagePemuat || 0, potonganPemuat: rec.potonganPemuat || 0, brondolanSentKg: rec.brondolanSentKg || 0 },
         drivers: rec.drivers,
         loaders: rec.loaders,
         total_premi: rec.totalPremi,
@@ -4227,6 +4318,680 @@ function initCekPenghasilan() {
         if (e.key === 'Enter') {
             e.preventDefault();
             performSearch();
+        }
+    });
+}
+
+// =============================================
+// PENGELUARAN BUAH MANUAL
+// =============================================
+
+function saveBuahRecordsLocal() {
+    localStorage.setItem('dxtapremi_buah_records', JSON.stringify(state.buahRecords));
+}
+
+function loadBuahRecordsLocal() {
+    const saved = localStorage.getItem('dxtapremi_buah_records');
+    if (saved) {
+        try {
+            state.buahRecords = JSON.parse(saved);
+        } catch (e) {
+            state.buahRecords = [];
+        }
+    }
+}
+
+// Load buah records: local first, then Supabase
+async function loadBuahRecords(forceOnline = false) {
+    loadBuahRecordsLocal();
+    updateBuahCardStats();
+    if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+
+    if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL') return;
+    try {
+        const headers = await getSupabaseHeaders();
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records?select=*&order=date.desc,id.desc`, { headers });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                const onlineIds = new Set(data.map(r => r.id));
+                const localOnly = state.buahRecords.filter(r => !onlineIds.has(r.id));
+                const merged = [...data.map(r => ({
+                    id: r.id,
+                    date: r.date,
+                    division: r.division,
+                    field: r.field || '',
+                    bjr: r.bjr || 0,
+                    rate: r.rate || 33000,
+                    workers: r.workers,
+                    totalTandan: r.total_tandan,
+                    totalPremi: r.total_premi || 0,
+                    createdBy: r.created_by || 'Public'
+                })), ...localOnly];
+                state.buahRecords = merged;
+                saveBuahRecordsLocal();
+                updateBuahCardStats();
+                if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+            }
+        }
+    } catch (err) {
+        console.warn('Gagal load buah records online:', err);
+    }
+}
+
+async function insertBuahRecordOnline(rec) {
+    if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL') return;
+    try {
+        const payload = {
+            id: rec.id,
+            date: rec.date,
+            division: rec.division,
+            field: rec.field || '',
+            bjr: rec.bjr || 0,
+            rate: rec.rate || 33000,
+            workers: rec.workers,
+            total_tandan: rec.totalTandan,
+            total_premi: rec.totalPremi || 0,
+            created_by: rec.createdBy || 'Public'
+        };
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records`, {
+            method: 'POST',
+            headers: await getSupabaseHeaders({
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates'
+            }),
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) console.error('Gagal insert buah online:', await res.text());
+    } catch (err) {
+        console.error('Gagal insert buah online:', err);
+    }
+}
+
+async function deleteBuahRecordOnline(id) {
+    if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL') return;
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records?id=eq.${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: await getSupabaseHeaders()
+        });
+        if (!res.ok) console.error('Gagal delete buah online:', await res.text());
+    } catch (err) {
+        console.error('Gagal delete buah online:', err);
+    }
+}
+
+// Hitung premi satu pekerja berdasarkan tandan, bjr, rate
+function calcBuahPremi(tandan, bjr, rate) {
+    const tonase = (tandan * bjr) / 1000;
+    return Math.round(tonase * rate);
+}
+
+// Update card stats for Buah Manual — tampilkan total premi (Rp)
+function updateBuahCardStats() {
+    const today = getLocalToday();
+    const { start: pStart, end: pEnd } = getPeriodDates(0);
+    const periodLabel = formatPeriodLabel(0);
+
+    let todayPremi = 0;
+    let periodPremi = 0;
+
+    state.buahRecords.forEach(rec => {
+        const dp = rec.date.split('-');
+        const recDate = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+        const rPremi = rec.totalPremi || 0;
+        if (rec.date === today) todayPremi += rPremi;
+        if (recDate >= pStart && recDate <= pEnd) periodPremi += rPremi;
+    });
+
+    const elToday = document.getElementById('card-bm-today');
+    const elPeriod = document.getElementById('card-bm-period');
+    const elPeriodLabel = document.getElementById('card-bm-period-label');
+    if (elToday) elToday.textContent = formatRupiah(todayPremi);
+    if (elPeriod) elPeriod.textContent = formatRupiah(periodPremi);
+    if (elPeriodLabel) elPeriodLabel.textContent = periodLabel;
+}
+
+// Render Buah Manual history in the history table area
+function renderBuahHistoryTable() {
+    const tbody = document.getElementById('history-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const { start: periodStart, end: periodEnd } = getPeriodDates(state.activePeriodIndex);
+
+    const filtered = state.buahRecords.filter(rec => {
+        const dp = rec.date.split('-');
+        const d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+        return d >= periodStart && d <= periodEnd;
+    });
+
+    filtered.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" class="table-empty-state">
+                    <i data-lucide="package-open"></i>
+                    <p>Belum ada catatan pengeluaran buah manual untuk periode ini.</p>
+                </td>
+            </tr>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    filtered.forEach((rec, index) => {
+        const tr = document.createElement('tr');
+
+        const bjr = rec.bjr || 0;
+        const rate = rec.rate || 33000;
+
+        // Build workers cell
+        let workersCellHTML = '<div class="worker-badge-cell">';
+        (rec.workers || []).forEach(w => {
+            const tandan = w.tandan || 0;
+            const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+            workersCellHTML += `
+                <div class="wb-item">
+                    <span class="wb-role" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">PEKRJ</span>
+                    <span class="wb-name">${w.name}</span>
+                    <span class="wb-nik" style="color:var(--accent-purple);">${w.nik || '-'}</span>
+                    <strong style="color:#a78bfa;margin-left:0.25rem;">(${tandan.toLocaleString('id-ID')} Tdn)</strong>
+                    <strong style="color:var(--accent-gold);margin-left:0.25rem;">${formatRupiah(premi)}</strong>
+                </div>
+            `;
+        });
+        workersCellHTML += '</div>';
+
+        // Result detail
+        const totalTon = ((rec.totalTandan || 0) * bjr / 1000);
+        const resultDetail = `
+            <div style="margin-bottom:3px;"><strong>${(rec.totalTandan || 0).toLocaleString('id-ID')}</strong> Tandan</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Field: <strong>${rec.field || '-'}</strong> | BJR: ${bjr} Kg</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Tonase: ${totalTon.toFixed(3)} Ton</div>
+        `;
+
+        // Premi detail
+        const premiBrk = (rec.workers || []).map(w => {
+            const tandan = w.tandan || 0;
+            const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+            return `${w.name.split(' ')[0]}: ${formatRupiah(premi)}`;
+        }).join('<br>');
+
+        let actionCellHTML = '';
+        if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+            actionCellHTML = `
+                <td data-label="Aksi">
+                    <div class="action-btn-group">
+                        <button type="button" class="btn-delete-buah-row" title="Hapus catatan ini">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+        } else {
+            actionCellHTML = `<td data-label="Aksi"></td>`;
+        }
+
+        tr.innerHTML = `
+            <td data-label="No">${index + 1}</td>
+            <td data-label="Tanggal">${rec.date}</td>
+            <td data-label="Kategori"><span class="cat-badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);">Buah Manual</span></td>
+            <td data-label="Dicatat Oleh"><span class="created-by-badge" style="font-size:0.8rem;padding:2px 6px;background:rgba(255,255,255,0.06);border-radius:4px;display:inline-block;font-weight:500;">${rec.createdBy || 'Public'}</span></td>
+            <td data-label="Lokasi"><strong>${rec.division || '-'}</strong></td>
+            <td data-label="Unit/Kendaraan" style="font-size:0.82rem;color:var(--text-muted);">Tarif: ${formatRupiah(rate)}/Ton</td>
+            <td data-label="Pekerja & Peran">${workersCellHTML}</td>
+            <td data-label="Hasil Kerja"><strong>${resultDetail}</strong></td>
+            <td data-label="Premi" style="font-size:0.8rem;line-height:1.4;">${premiBrk}</td>
+            <td data-label="Total Premi"><strong style="color:var(--primary-light);font-size:1rem">${formatRupiah(rec.totalPremi || 0)}</strong></td>
+            ${actionCellHTML}
+        `;
+
+        // Bind delete
+        if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+            const btnDel = tr.querySelector('.btn-delete-buah-row');
+            if (btnDel) {
+                btnDel.addEventListener('click', async () => {
+                    if (confirm('Hapus catatan pengeluaran buah manual ini?')) {
+                        const idx = state.buahRecords.findIndex(r => r.id === rec.id);
+                        if (idx > -1) {
+                            state.buahRecords.splice(idx, 1);
+                            saveBuahRecordsLocal();
+                            updateBuahCardStats();
+                            renderBuahHistoryTable();
+                            try {
+                                await deleteBuahRecordOnline(rec.id);
+                                showToast('Catatan buah berhasil dihapus.');
+                            } catch (e) {
+                                showToast('Dihapus lokal, gagal hapus online.', true);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        tbody.appendChild(tr);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// Hitung & perbarui total di modal buah
+function updateBuahTotal() {
+    const fieldSelect = document.getElementById('buah-input-field');
+    const bjrInput = document.getElementById('buah-display-bjr');
+    const rateInput = document.getElementById('buah-input-rate');
+
+    const bjr = parseFloat(bjrInput ? bjrInput.value : 0) || 0;
+    const rate = parseFloat(rateInput ? rateInput.value : 33000) || 33000;
+
+    const rows = document.querySelectorAll('.buah-worker-row');
+    let totalTandan = 0;
+    let totalPremi = 0;
+
+    rows.forEach(row => {
+        const tandan = parseInt(row.querySelector('.buah-worker-tandan').value) || 0;
+        const premi = calcBuahPremi(tandan, bjr, rate);
+        totalTandan += tandan;
+        totalPremi += premi;
+
+        // Update per-row premi display
+        const premiEl = row.querySelector('.buah-row-premi');
+        if (premiEl) premiEl.textContent = bjr > 0 ? formatRupiah(premi) : '-';
+    });
+
+    const elTandan = document.getElementById('buah-total-tandan');
+    const elPremi = document.getElementById('buah-total-premi');
+    if (elTandan) elTandan.textContent = `${totalTandan.toLocaleString('id-ID')} Tandan`;
+    if (elPremi) elPremi.textContent = formatRupiah(totalPremi);
+
+    // Update formula info bar
+    const formulaInfo = document.getElementById('buah-formula-info');
+    const formulaText = document.getElementById('buah-formula-text');
+    if (bjr > 0 && formulaInfo && formulaText) {
+        formulaInfo.style.display = '';
+        formulaText.textContent = `Tandan × ${bjr} kg ÷ 1000 × ${formatRupiah(rate)}/Ton`;
+    } else if (formulaInfo) {
+        formulaInfo.style.display = 'none';
+    }
+}
+
+// Add a worker row in the Buah Manual modal
+function addBuahWorkerRow() {
+    const container = document.getElementById('buah-workers-container');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'buah-worker-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr 32px; gap: 0.4rem; align-items: center;';
+
+    row.innerHTML = `
+        <div class="autocomplete-container" style="position: relative; width: 100%;">
+            <div class="input-with-icon" style="position: relative;">
+                <i data-lucide="user" class="input-icon" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);"></i>
+                <input type="text" class="autocomplete-input buah-worker-name-input" placeholder="Cari pekerja..." required autocomplete="off"
+                    style="width:100%;padding:0.45rem 2rem 0.45rem 28px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:0.86rem;">
+            </div>
+            <input type="hidden" class="buah-worker-nik-val">
+            <div class="autocomplete-dropdown hidden buah-dropdown" style="position:absolute;top:100%;left:0;right:0;z-index:30;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.4);max-height:160px;overflow-y:auto; margin-top: 4px;"></div>
+            <div class="selected-worker-badge hidden buah-badge" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:rgba(139,92,246,0.15); color:var(--accent-purple); padding:0.15rem 0.4rem; border-radius:4px; font-size:0.7rem; display:flex; align-items:center; gap:0.3rem;">
+                NIK: <span class="badge-nik">-</span>
+                <button type="button" class="btn-clear-badge btn-clear-buah-badge" style="background:none; border:none; color:inherit; cursor:pointer; font-size:1rem; line-height:1; padding:0;">&times;</button>
+            </div>
+        </div>
+        <input type="number" class="buah-worker-tandan" min="0" placeholder="0" value="0"
+            style="width:100%;padding:0.45rem 0.5rem;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:0.86rem;text-align:center;">
+        <span class="buah-row-premi" style="font-size:0.82rem;font-weight:700;color:var(--accent-gold);text-align:right;padding-right:0.25rem;">—</span>
+        <button type="button" class="btn-remove-buah-row"
+            style="background:var(--danger-glow);border:1px solid rgba(239,68,68,0.3);color:var(--danger);width:32px;height:32px;border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <i data-lucide="x" style="width:13px;height:13px;"></i>
+        </button>
+    `;
+
+    container.appendChild(row);
+    if (window.lucide) lucide.createIcons();
+
+    // Bind events
+    const input = row.querySelector('.buah-worker-name-input');
+    const dropdown = row.querySelector('.buah-dropdown');
+    const badge = row.querySelector('.buah-badge');
+    const hiddenNik = row.querySelector('.buah-worker-nik-val');
+    const btnClear = row.querySelector('.btn-clear-buah-badge');
+    const btnRemove = row.querySelector('.btn-remove-buah-row');
+    const tandanInput = row.querySelector('.buah-worker-tandan');
+
+    // Autocomplete input
+    input.addEventListener('input', (e) => {
+        const value = e.target.value.trim().toUpperCase();
+        resetBuahCalcState();
+        if (!value) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('hidden');
+            return;
+        }
+        const matches = EMPLOYEE_DB.filter(emp => emp.name.includes(value));
+        if (matches.length === 0) {
+            dropdown.innerHTML = '<div style="padding:0.45rem 0.75rem;font-size:0.84rem;color:var(--text-muted);">Tidak ditemukan</div>';
+            dropdown.classList.remove('hidden');
+            return;
+        }
+        dropdown.innerHTML = matches.map(e => `
+            <div class="buah-ac-item" data-nik="${e.nik}" data-name="${e.name}"
+                style="padding:0.45rem 0.75rem;cursor:pointer;font-size:0.84rem;border-bottom:1px solid var(--border-color);">
+                <strong>${e.name}</strong> <span style="color:var(--text-muted);font-size:0.76rem;">${e.nik}</span>
+            </div>
+        `).join('');
+        dropdown.classList.remove('hidden');
+        
+        dropdown.querySelectorAll('.buah-ac-item').forEach(item => {
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                input.value = item.dataset.name;
+                input.disabled = true;
+                hiddenNik.value = item.dataset.nik;
+                badge.querySelector('.badge-nik').textContent = item.dataset.nik;
+                badge.classList.remove('hidden');
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+                updateBuahTotal();
+                resetBuahCalcState();
+                tandanInput.focus();
+            });
+            item.addEventListener('mouseenter', () => { item.style.background = 'var(--bg-secondary)'; });
+            item.addEventListener('mouseleave', () => { item.style.background = ''; });
+        });
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.classList.add('hidden'); }, 200);
+    });
+
+    // Clear badge
+    btnClear.addEventListener('click', () => {
+        input.value = '';
+        input.disabled = false;
+        hiddenNik.value = '';
+        badge.classList.add('hidden');
+        resetBuahCalcState();
+        updateBuahTotal();
+        input.focus();
+    });
+
+    // Tandan → recalc
+    tandanInput.addEventListener('input', () => {
+        updateBuahTotal();
+        resetBuahCalcState();
+    });
+
+    // Remove row → reset calc
+    btnRemove.addEventListener('click', () => {
+        row.remove();
+        updateBuahTotal();
+        resetBuahCalcState();
+    });
+
+    input.focus();
+}
+
+// Reset the calculation state — hide result panel, disable Simpan
+function resetBuahCalcState() {
+    const calcResult = document.getElementById('buah-calc-result');
+    const btnSimpan = document.getElementById('btn-simpan-buah');
+    if (calcResult) calcResult.classList.add('hidden');
+    if (btnSimpan) {
+        btnSimpan.disabled = true;
+        btnSimpan.style.opacity = '0.45';
+        btnSimpan.style.cursor = 'not-allowed';
+    }
+    // Reset per-row premi display to dash
+    document.querySelectorAll('.buah-row-premi').forEach(el => { el.textContent = '—'; });
+}
+
+// Initialize Buah Manual feature
+function initBuahManual() {
+    const cardBuah = document.getElementById('card-buah-manual');
+    const modal = document.getElementById('modal-buah-manual');
+    const btnClose = document.getElementById('btn-close-buah-modal');
+    const btnCancel = document.getElementById('btn-cancel-buah-modal');
+    const btnAddWorker = document.getElementById('btn-add-buah-worker');
+    const form = document.getElementById('form-buah-manual');
+
+    if (!cardBuah || !modal || !form) return;
+
+    // Populate field dropdown from FIELD_BJR
+    const fieldSelect = document.getElementById('buah-input-field');
+    if (fieldSelect && fieldSelect.options.length <= 1) {
+        FIELD_BJR.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.field;
+            opt.dataset.bjr = f.bjr;
+            opt.textContent = `${f.field}  (BJR: ${f.bjr} Kg)`;
+            fieldSelect.appendChild(opt);
+        });
+
+        fieldSelect.addEventListener('change', () => {
+            const selected = fieldSelect.options[fieldSelect.selectedIndex];
+            const bjr = parseFloat(selected ? selected.dataset.bjr : 0) || 0;
+            const bjrInput = document.getElementById('buah-display-bjr');
+            if (bjrInput) bjrInput.value = bjr.toFixed(2);
+            updateBuahTotal();
+            resetBuahCalcState();
+        });
+    }
+
+    // Rate change → reset calc
+    const rateInput = document.getElementById('buah-input-rate');
+    if (rateInput) rateInput.addEventListener('input', () => {
+        updateBuahTotal();
+        resetBuahCalcState();
+    });
+
+    // ── Hitung Premi button ──
+    const btnHitung = document.getElementById('btn-hitung-premi-buah');
+    if (btnHitung) {
+        btnHitung.addEventListener('click', () => {
+            const fieldSel = document.getElementById('buah-input-field');
+            const bjrVal = parseFloat(document.getElementById('buah-display-bjr').value) || 0;
+            const rateVal = parseFloat(document.getElementById('buah-input-rate').value) || 33000;
+
+            if (!fieldSel || !fieldSel.value || bjrVal <= 0) {
+                showToast('Pilih Field terlebih dahulu untuk menentukan BJR.', true);
+                return;
+            }
+
+            const rows = document.querySelectorAll('.buah-worker-row');
+            if (rows.length === 0) {
+                showToast('Tambahkan minimal 1 pekerja terlebih dahulu.', true);
+                return;
+            }
+
+            let allValid = true;
+            const results = [];
+
+            rows.forEach(row => {
+                const nameInput = row.querySelector('.buah-worker-name-input');
+                const nikInput = row.querySelector('.buah-worker-nik-val');
+                const tandan = parseInt(row.querySelector('.buah-worker-tandan').value) || 0;
+                
+                if (!nikInput.value || !nameInput.value) { allValid = false; return; }
+                const name = nameInput.value;
+                const nik = nikInput.value;
+                const premi = calcBuahPremi(tandan, bjrVal, rateVal);
+                const tonase = (tandan * bjrVal / 1000).toFixed(3);
+                results.push({ nik, name, tandan, tonase, premi });
+
+                // Update per-row premi display
+                const premiEl = row.querySelector('.buah-row-premi');
+                if (premiEl) premiEl.textContent = formatRupiah(premi);
+            });
+
+            if (!allValid) {
+                showToast('Pilih pekerja dari database untuk setiap baris.', true);
+                return;
+            }
+
+            const grandTotal = results.reduce((a, r) => a + r.premi, 0);
+            const totalTandan = results.reduce((a, r) => a + r.tandan, 0);
+
+            // Build detail HTML
+            const detailHTML = results.map(r => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;border-bottom:1px dashed rgba(139,92,246,0.15);">
+                    <div>
+                        <span style="font-weight:700;color:var(--text-primary);">${r.name}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted);margin-left:0.4rem;">${r.nik}</span>
+                    </div>
+                    <div style="text-align:right;font-size:0.82rem;">
+                        <span style="color:var(--text-muted);">${r.tandan} Tandan × ${bjrVal} kg ÷ 1000 = ${r.tonase} Ton</span><br>
+                        <strong style="color:var(--accent-gold);">${formatRupiah(r.premi)}</strong>
+                    </div>
+                </div>
+            `).join('');
+
+            const calcDetail = document.getElementById('buah-calc-detail');
+            const calcGrandTotal = document.getElementById('buah-calc-grand-total');
+            const calcResult = document.getElementById('buah-calc-result');
+
+            if (calcDetail) calcDetail.innerHTML = detailHTML;
+            if (calcGrandTotal) calcGrandTotal.textContent = formatRupiah(grandTotal);
+            if (calcResult) calcResult.classList.remove('hidden');
+
+            // Update summary totals
+            const elTandan = document.getElementById('buah-total-tandan');
+            const elPremi = document.getElementById('buah-total-premi');
+            if (elTandan) elTandan.textContent = `${totalTandan.toLocaleString('id-ID')} Tandan`;
+            if (elPremi) elPremi.textContent = formatRupiah(grandTotal);
+
+            // ✅ Enable Simpan button
+            const btnSimpan = document.getElementById('btn-simpan-buah');
+            if (btnSimpan) {
+                btnSimpan.disabled = false;
+                btnSimpan.style.opacity = '1';
+                btnSimpan.style.cursor = 'pointer';
+            }
+
+            if (window.lucide) lucide.createIcons();
+            showToast(`Premi dihitung — ${results.length} pekerja, Total ${formatRupiah(grandTotal)}`);
+
+            // Scroll to result panel
+            if (calcResult) calcResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    }
+
+    const openModal = () => {
+        if (!currentUser) {
+            showToast('Silakan masuk terlebih dahulu untuk mencatat data.', true);
+            return;
+        }
+        modal.classList.remove('hidden');
+        // Reset form
+        document.getElementById('buah-input-tanggal').value = getLocalToday();
+        document.getElementById('buah-input-divisi').value = '';
+        const fs = document.getElementById('buah-input-field');
+        if (fs) fs.value = '';
+        const bjrD = document.getElementById('buah-display-bjr');
+        if (bjrD) bjrD.value = '';
+        const rateI = document.getElementById('buah-input-rate');
+        if (rateI) rateI.value = 33000;
+        const container = document.getElementById('buah-workers-container');
+        if (container) container.innerHTML = '';
+        const fInfo = document.getElementById('buah-formula-info');
+        if (fInfo) fInfo.style.display = 'none';
+        resetBuahCalcState();
+        updateBuahTotal();
+        addBuahWorkerRow();
+        if (window.lucide) lucide.createIcons();
+    };
+
+    const closeModal = () => { modal.classList.add('hidden'); };
+
+    cardBuah.addEventListener('click', openModal);
+    btnClose.addEventListener('click', closeModal);
+    btnCancel.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    if (btnAddWorker) {
+        btnAddWorker.addEventListener('click', () => {
+            addBuahWorkerRow();
+            resetBuahCalcState();
+            if (window.lucide) lucide.createIcons();
+        });
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const date = document.getElementById('buah-input-tanggal').value;
+        const division = document.getElementById('buah-input-divisi').value.trim();
+        const fieldSel = document.getElementById('buah-input-field');
+        const fieldVal = fieldSel ? fieldSel.value : '';
+        const bjrVal = parseFloat(document.getElementById('buah-display-bjr').value) || 0;
+        const rateVal = parseFloat(document.getElementById('buah-input-rate').value) || 33000;
+
+        if (!date || !division) {
+            showToast('Lengkapi tanggal dan divisi/blok.', true);
+            return;
+        }
+        if (!fieldVal || bjrVal <= 0) {
+            showToast('Pilih Field terlebih dahulu untuk menentukan BJR.', true);
+            return;
+        }
+
+        // Collect workers from select dropdowns
+        const rows = document.querySelectorAll('.buah-worker-row');
+        const workers = [];
+        let isValid = true;
+
+        rows.forEach(row => {
+            const nameInput = row.querySelector('.buah-worker-name-input');
+            const nikInput = row.querySelector('.buah-worker-nik-val');
+            const tandan = parseInt(row.querySelector('.buah-worker-tandan').value) || 0;
+            
+            if (!nikInput || !nikInput.value) { isValid = false; return; }
+            const name = nameInput.value;
+            const nik = nikInput.value;
+            const premi = calcBuahPremi(tandan, bjrVal, rateVal);
+            workers.push({ name, nik, tandan, premi });
+        });
+
+        if (!isValid || workers.length === 0) {
+            showToast('Pilih pekerja dari database untuk semua baris.', true);
+            return;
+        }
+
+        const totalTandan = workers.reduce((acc, w) => acc + w.tandan, 0);
+        const totalPremi = workers.reduce((acc, w) => acc + w.premi, 0);
+
+        const rec = {
+            id: 'buah_' + Date.now(),
+            date,
+            division,
+            field: fieldVal,
+            bjr: bjrVal,
+            rate: rateVal,
+            workers,
+            totalTandan,
+            totalPremi,
+            createdBy: currentUser || 'Public'
+        };
+
+        state.buahRecords.push(rec);
+        saveBuahRecordsLocal();
+        updateBuahCardStats();
+        if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+
+        closeModal();
+        showToast(`Catatan buah disimpan — ${totalTandan} Tandan | Premi: ${formatRupiah(totalPremi)}`);
+
+        // Sync to Supabase
+        if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
+            try {
+                await insertBuahRecordOnline(rec);
+            } catch (err) {
+                console.error(err);
+                showToast('Tersimpan offline, gagal sinkron online.', true);
+            }
         }
     });
 }

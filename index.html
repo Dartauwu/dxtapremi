@@ -5,11 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DxtaPremi - Sistem Pencatatan Premi Pekerja Sawit</title>
-    <meta name="description" content="Sistem aplikasi pencatatan premi pekerja kelapa sawit terbaik dan mudah digunakan. DxtaPremi membantu menghitung dan merekap premi secara otomatis.">
-    <meta name="keywords" content="dartaxpremi, dxtapremi, pencatatan premi, premi sawit, aplikasi premi pekerja, kelapa sawit">
+    <meta name="description"
+        content="Sistem aplikasi pencatatan premi pekerja kelapa sawit terbaik dan mudah digunakan. DxtaPremi membantu menghitung dan merekap premi secara otomatis.">
+    <meta name="keywords"
+        content="dartaxpremi, dxtapremi, pencatatan premi, premi sawit, aplikasi premi pekerja, kelapa sawit">
     <meta name="author" content="DxtaPremi">
     <meta property="og:title" content="DxtaPremi - Sistem Pencatatan Premi Pekerja">
-    <meta property="og:description" content="Sistem pencatatan premi pekerja kelapa sawit yang cepat, akurat, dan mudah digunakan.">
+    <meta property="og:description"
+        content="Sistem pencatatan premi pekerja kelapa sawit yang cepat, akurat, dan mudah digunakan.">
     <meta property="og:url" content="https://www.dartaxpremi.my.id/">
     <meta property="og:type" content="website">
     <link rel="canonical" href="https://www.dartaxpremi.my.id/">
@@ -26,7 +29,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 
 <body>
@@ -64,21 +67,29 @@
         <main class="main-content">
 
             <!-- Welcome Banner -->
-            <section class="welcome-banner" style="position: relative; overflow: hidden;">
+            <section class="welcome-banner" style="position: relative; overflow: hidden; width: 100%;">
                 <!-- Slideshow Background Container -->
-                <div id="banner-slideshow-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
-                    <div id="banner-slideshow-track" style="display: flex; height: 100%; transition: transform 2s ease-in-out; width: 100%;"></div>
+                <div id="banner-slideshow-container"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+                    <div id="banner-slideshow-track" style="position: relative; width: 100%; height: 100%;"></div>
                 </div>
-                <!-- Dark Overlay for Readability -->
-                <div id="banner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: rgba(10, 30, 20, 0.65); display: none;"></div>
-                
+                <!-- Gradient Overlay for Readability (Dark on left, transparent on right) -->
+                <div id="banner-overlay"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: linear-gradient(90deg, rgba(15, 35, 45, 0.95) 0%, rgba(15, 35, 45, 0.7) 45%, rgba(15, 35, 45, 0) 100%); display: none;">
+                </div>
+
                 <!-- Owner Controls -->
-                <div id="banner-controls" class="hidden" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; gap: 0.5rem; align-items: center;">
-                    <label for="banner-upload" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;" title="Bisa upload hingga 10 foto">
+                <div id="banner-controls" class="hidden"
+                    style="position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; gap: 0.5rem; align-items: center;">
+                    <label for="banner-upload" class="btn-secondary"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; display: flex; align-items: center; gap: 0.3rem;"
+                        title="Bisa upload hingga 10 foto">
                         <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Tambah Foto
                     </label>
                     <input type="file" id="banner-upload" accept="image/*" class="hidden" style="display: none;">
-                    <button id="btn-banner-clear" class="btn-danger-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;" title="Hapus Semua Foto">
+                    <button id="btn-banner-clear" class="btn-danger-outline"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,0,0,0.4); color: #ff6b6b; display: flex; align-items: center; gap: 0.3rem;"
+                        title="Hapus Semua Foto">
                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus Semua
                     </button>
                 </div>
@@ -86,34 +97,45 @@
                 <div class="banner-content" style="position: relative; z-index: 2;">
                     <p class="banner-greeting">Selamat Datang di Portal</p>
                     <h2>Premi Pekerja</h2>
-                    <p class="banner-desc">Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai pencatatan premi harian.</p>
+                    <p class="banner-desc">Silakan pilih kategori aktivitas pekerjaan di bawah ini untuk memulai
+                        pencatatan premi harian.</p>
                 </div>
                 <div class="banner-illustration" style="position: relative; z-index: 2;">
                     <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" class="banner-svg">
                         <!-- Clipboard -->
-                        <rect x="35" y="20" width="90" height="120" rx="12" fill="rgba(30,60,80,0.85)" stroke="rgba(100,200,200,0.3)" stroke-width="2"/>
-                        <rect x="55" y="10" width="50" height="16" rx="8" fill="rgba(20,50,70,0.9)" stroke="rgba(100,200,200,0.3)" stroke-width="1.5"/>
+                        <rect x="35" y="20" width="90" height="120" rx="12" fill="rgba(30,60,80,0.85)"
+                            stroke="rgba(100,200,200,0.3)" stroke-width="2" />
+                        <rect x="55" y="10" width="50" height="16" rx="8" fill="rgba(20,50,70,0.9)"
+                            stroke="rgba(100,200,200,0.3)" stroke-width="1.5" />
                         <!-- Check lines -->
-                        <circle cx="55" cy="55" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
-                        <polyline points="51,55 54,58 59,52" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="70" y="50" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
-                        <rect x="70" y="58" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+                        <circle cx="55" cy="55" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)"
+                            stroke-width="1.5" />
+                        <polyline points="51,55 54,58 59,52" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <rect x="70" y="50" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)" />
+                        <rect x="70" y="58" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)" />
 
-                        <circle cx="55" cy="80" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
-                        <polyline points="51,80 54,83 59,77" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="70" y="75" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
-                        <rect x="70" y="83" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+                        <circle cx="55" cy="80" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)"
+                            stroke-width="1.5" />
+                        <polyline points="51,80 54,83 59,77" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <rect x="70" y="75" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)" />
+                        <rect x="70" y="83" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)" />
 
-                        <circle cx="55" cy="105" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)" stroke-width="1.5"/>
-                        <polyline points="51,105 54,108 59,102" stroke="rgba(16,185,129,0.9)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="70" y="100" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)"/>
-                        <rect x="70" y="108" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)"/>
+                        <circle cx="55" cy="105" r="8" fill="rgba(16,185,129,0.2)" stroke="rgba(16,185,129,0.7)"
+                            stroke-width="1.5" />
+                        <polyline points="51,105 54,108 59,102" stroke="rgba(16,185,129,0.9)" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                        <rect x="70" y="100" width="40" height="4" rx="2" fill="rgba(100,200,200,0.15)" />
+                        <rect x="70" y="108" width="28" height="3" rx="1.5" fill="rgba(100,200,200,0.1)" />
 
                         <!-- Shield overlay -->
                         <g transform="translate(95, 85)">
-                            <circle cx="25" cy="25" r="25" fill="rgba(16,185,129,0.15)"/>
-                            <path d="M25 8 L40 16 L40 28 C40 36 33 42 25 45 C17 42 10 36 10 28 L10 16 Z" fill="rgba(16,185,129,0.3)" stroke="rgba(16,185,129,0.8)" stroke-width="1.5"/>
-                            <polyline points="19,26 23,30 31,22" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="25" cy="25" r="25" fill="rgba(16,185,129,0.15)" />
+                            <path d="M25 8 L40 16 L40 28 C40 36 33 42 25 45 C17 42 10 36 10 28 L10 16 Z"
+                                fill="rgba(16,185,129,0.3)" stroke="rgba(16,185,129,0.8)" stroke-width="1.5" />
+                            <polyline points="19,26 23,30 31,22" stroke="white" stroke-width="2.5" fill="none"
+                                stroke-linecap="round" stroke-linejoin="round" />
                         </g>
                     </svg>
                 </div>
@@ -141,6 +163,26 @@
                         <span class="stat-sublabel" id="stat-sub-premi">Total perolehan premi</span>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                        <i data-lucide="package-plus"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Brondolan Terkumpul</span>
+                        <span class="stat-value" id="stat-bron-terkumpul">0 Kg</span>
+                        <span class="stat-sublabel" id="stat-sub-bron-terkumpul">Total hari ini</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                        <i data-lucide="truck"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Brondolan Terkirim</span>
+                        <span class="stat-value" id="stat-bron-terkirim">0 Kg</span>
+                        <span class="stat-sublabel" id="stat-sub-bron-terkirim">Total hari ini</span>
+                    </div>
+                </div>
             </section>
 
             <!-- Menu Utama / Cards -->
@@ -148,15 +190,22 @@
                 <!-- Card 1 -->
                 <div class="menu-card" id="card-dump-truck">
                     <div class="card-glow"></div>
-                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                    <div class="card-top-row"
+                        style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
                         <div class="card-icon c-orange">
                             <i data-lucide="truck"></i>
                         </div>
                         <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
-                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
-                            <div id="card-dt-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
-                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-dt-period-label">Periode ini</div>
-                            <div id="card-dt-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">
+                                Hari Ini</div>
+                            <div id="card-dt-today"
+                                style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">
+                                Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;"
+                                id="card-dt-period-label">Periode ini</div>
+                            <div id="card-dt-period"
+                                style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
                         </div>
                     </div>
                     <h3>Loading Bak Mati / Dump Truck</h3>
@@ -170,15 +219,22 @@
                 <!-- Card 2 -->
                 <div class="menu-card" id="card-tractor">
                     <div class="card-glow"></div>
-                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                    <div class="card-top-row"
+                        style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
                         <div class="card-icon c-green">
                             <i data-lucide="tractor"></i>
                         </div>
                         <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
-                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
-                            <div id="card-tr-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
-                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-tr-period-label">Periode ini</div>
-                            <div id="card-tr-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">
+                                Hari Ini</div>
+                            <div id="card-tr-today"
+                                style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">
+                                Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;"
+                                id="card-tr-period-label">Periode ini</div>
+                            <div id="card-tr-period"
+                                style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
                         </div>
                     </div>
                     <h3>Loading Traktor / Operator</h3>
@@ -192,19 +248,69 @@
                 <!-- Card 3 -->
                 <div class="menu-card" id="card-ketek-brondolan">
                     <div class="card-glow"></div>
-                    <div class="card-top-row" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                    <div class="card-top-row"
+                        style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
                         <div class="card-icon c-blue">
                             <i data-lucide="droplet"></i>
                         </div>
                         <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
-                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">Hari Ini</div>
-                            <div id="card-br-today" style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">Rp 0</div>
-                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;" id="card-br-period-label">Periode ini</div>
-                            <div id="card-br-period" style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">
+                                Hari Ini</div>
+                            <div id="card-br-today"
+                                style="font-size: 1rem; font-weight: 800; color: var(--accent-teal); white-space: nowrap;">
+                                Rp 0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;"
+                                id="card-br-period-label">Periode ini</div>
+                            <div id="card-br-period"
+                                style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">Rp 0</div>
                         </div>
                     </div>
                     <h3>Ketek Brondolan</h3>
                     <p>Pencatatan premi pengumpulan brondolan sawit.</p>
+                    <div class="card-footer">
+                        <span>Buka Form</span>
+                        <i data-lucide="arrow-right"></i>
+                    </div>
+                </div>
+
+                <!-- Card 4 - Pengeluaran Buah Manual -->
+                <div class="menu-card" id="card-buah-manual">
+                    <div class="card-glow" style="--glow-color: rgba(139, 92, 246, 0.2);"></div>
+                    <div class="card-top-row"
+                        style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                        <div class="card-icon c-purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide">
+                                <!-- Person -->
+                                <circle cx="5" cy="5" r="2" />
+                                <path d="M5 7v6" />
+                                <path d="M5 8l3 3" />
+                                <path d="M5 13l-2 5" />
+                                <path d="M5 13l2 5" />
+                                <!-- Wheelbarrow -->
+                                <path d="M8 11h3" />
+                                <path d="M11 11l2 5h5l1.5-5z" />
+                                <circle cx="19" cy="17" r="2" />
+                                <path d="M13 16v2" />
+                            </svg>
+                        </div>
+                        <div class="card-stats" style="text-align: right; flex: 1; min-width: 0;">
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.1rem;">
+                                Hari Ini</div>
+                            <div id="card-bm-today"
+                                style="font-size: 1rem; font-weight: 800; color: var(--accent-purple); white-space: nowrap;">
+                                0 Tandan</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;"
+                                id="card-bm-period-label">Periode ini</div>
+                            <div id="card-bm-period"
+                                style="font-size: 0.85rem; font-weight: 700; color: var(--accent-gold);">0 Tandan</div>
+                        </div>
+                    </div>
+                    <h3>Pengeluaran Buah Manual</h3>
+                    <p>Pencatatan pengeluaran buah manual oleh pekerja — nama pekerja &amp; jumlah tandan.</p>
                     <div class="card-footer">
                         <span>Buka Form</span>
                         <i data-lucide="arrow-right"></i>
@@ -264,6 +370,16 @@
                                 </div>
                             </div>
 
+                            <div class="form-row hidden" id="group-brondolan-sent" style="margin-top: 1rem;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="input-brondolan-sent">Kg Brondolan Terkirim <small
+                                            style="font-weight:400;color:var(--text-muted);">(opsional, khusus
+                                            truk)</small></label>
+                                    <input type="number" id="input-brondolan-sent" placeholder="0" min="0"
+                                        style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.3);">
+                                </div>
+                            </div>
+
                             <!-- Driver/Operator Section -->
                             <div id="drivers-section">
                                 <div class="form-section-title d-flex justify-between">
@@ -277,7 +393,8 @@
                                     <!-- Dynamic driver rows will be added here -->
                                 </div>
 
-                                <div class="form-row hidden" id="group-tractor-calc" style="margin-top: 1rem; gap: 0.75rem;">
+                                <div class="form-row hidden" id="group-tractor-calc"
+                                    style="margin-top: 1rem; gap: 0.75rem;">
                                     <div class="form-group flex-1">
                                         <label for="main-tractor-field">Field / Afdeling</label>
                                         <select id="main-tractor-field">
@@ -290,7 +407,9 @@
                                     </div>
                                     <div class="form-group" style="flex: 1;">
                                         <label>BJR (Kg)</label>
-                                        <input type="number" id="main-tractor-bjr" step="0.01" min="0" placeholder="0.00" readonly style="background:var(--bg-secondary);color:var(--text-muted)">
+                                        <input type="number" id="main-tractor-bjr" step="0.01" min="0"
+                                            placeholder="0.00" readonly
+                                            style="background:var(--bg-secondary);color:var(--text-muted)">
                                     </div>
                                 </div>
                                 <div class="form-row" style="margin-top: 1rem;">
@@ -309,10 +428,13 @@
                                 <div class="form-row hidden" id="group-potongan-hk" style="margin-top: 0.5rem;">
                                     <div class="form-group flex-1">
                                         <label for="input-potongan-hk" id="label-potongan-hk">Potongan Ton Supir
-                                            <small style="font-weight:400;color:var(--text-muted);" id="label-potongan-hk-sub">(Opsional — dikurangi dari tonase supir)</small>
+                                            <small style="font-weight:400;color:var(--text-muted);"
+                                                id="label-potongan-hk-sub">(Opsional — dikurangi dari tonase
+                                                supir)</small>
                                         </label>
                                         <div class="input-with-suffix">
-                                            <input type="number" id="input-potongan-hk" step="0.001" min="0" placeholder="0.000">
+                                            <input type="number" id="input-potongan-hk" step="0.001" min="0"
+                                                placeholder="0.000">
                                             <span class="input-suffix">Ton</span>
                                         </div>
                                         <div id="live-driver-calc" class="live-calc-info hidden"></div>
@@ -334,30 +456,38 @@
 
                             <!-- Tonase & Potongan Pemuat (Dump Truck only — terpisah dari Supir) -->
                             <div id="group-tonase-pemuat" class="hidden" style="margin-top: 0.75rem;">
-                                <div class="form-section-divider" style="border-top: 1px dashed var(--border-color); padding-top: 0.75rem; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Tonase &amp; Potongan Pemuat (Terpisah dari Supir)</span>
+                                <div class="form-section-divider"
+                                    style="border-top: 1px dashed var(--border-color); padding-top: 0.75rem; margin-bottom: 0.5rem;">
+                                    <span
+                                        style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;">Tonase
+                                        &amp; Potongan Pemuat (Terpisah dari Supir)</span>
                                 </div>
                                 <div class="form-row" style="gap: 0.75rem;">
                                     <div class="form-group flex-1">
                                         <label for="input-tonnage-pemuat" id="label-tonnage-pemuat">Tonase Pemuat
-                                            <small style="font-weight:400;color:var(--text-muted);">(Wajib diisi, terpisah dari supir)</small>
+                                            <small style="font-weight:400;color:var(--text-muted);">(Wajib diisi,
+                                                terpisah dari supir)</small>
                                         </label>
                                         <div class="input-with-suffix">
-                                            <input type="number" id="input-tonnage-pemuat" step="0.001" min="0" placeholder="0.000">
+                                            <input type="number" id="input-tonnage-pemuat" step="0.001" min="0"
+                                                placeholder="0.000">
                                             <span class="input-suffix">Ton</span>
                                         </div>
                                     </div>
                                     <div class="form-group flex-1">
-                                        <label for="input-potongan-pemuat" id="label-potongan-pemuat">Potongan Ton Pemuat
+                                        <label for="input-potongan-pemuat" id="label-potongan-pemuat">Potongan Ton
+                                            Pemuat
                                             <small style="font-weight:400;color:var(--text-muted);">(Opsional)</small>
                                         </label>
                                         <div class="input-with-suffix">
-                                            <input type="number" id="input-potongan-pemuat" step="0.001" min="0" placeholder="0.000">
+                                            <input type="number" id="input-potongan-pemuat" step="0.001" min="0"
+                                                placeholder="0.000">
                                             <span class="input-suffix">Ton</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div id="live-loader-calc" class="live-calc-info hidden" style="margin-top: 0.5rem;"></div>
+                                <div id="live-loader-calc" class="live-calc-info hidden" style="margin-top: 0.5rem;">
+                                </div>
                             </div>
                             <!-- Submit Area -->
                             <div class="form-actions">
@@ -426,7 +556,8 @@
                         </div>
                     </div>
                     <div class="history-actions">
-                        <button id="btn-refresh-data" class="btn-secondary" title="Segarkan Data Online" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        <button id="btn-refresh-data" class="btn-secondary" title="Segarkan Data Online"
+                            style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
                             <i data-lucide="refresh-cw"></i> Segarkan
                         </button>
                         <button id="btn-owner-report" class="btn-primary hidden" title="Laporan Khusus Owner">
@@ -443,9 +574,12 @@
                 </div>
 
                 <!-- Period Filter Bar -->
-                <div class="history-period-tabs" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0 0.5rem 0; flex-wrap: wrap;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
-                    <button id="btn-history-period" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
+                <div class="history-period-tabs"
+                    style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0 0.5rem 0; flex-wrap: wrap;">
+                    <span
+                        style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
+                    <button id="btn-history-period"
+                        style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
                         <span id="history-period-label">Memuat...</span>
                         <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
                     </button>
@@ -457,6 +591,7 @@
                     <button class="tab-btn" data-tab="tab-dump-truck">Dump Truck</button>
                     <button class="tab-btn" data-tab="tab-tractor">Traktor</button>
                     <button class="tab-btn" data-tab="tab-brondolan">Ketek Brondolan</button>
+                    <button class="tab-btn" data-tab="tab-buah-manual">Buah Manual</button>
                 </div>
 
                 <!-- History Table Wrapper -->
@@ -565,29 +700,40 @@
                     <div class="form-group">
                         <label for="input-cek-nama">Nama Pekerja</label>
                         <div style="display: flex; gap: 0.5rem; position: relative;">
-                            <input type="text" id="input-cek-nama" placeholder="Masukkan nama..." autocomplete="off" style="flex: 1; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
-                            <div id="cek-nama-dropdown" class="autocomplete-dropdown hidden" style="position: absolute; top: 100%; left: 0; right: 90px; z-index: 10;"></div>
-                            <button id="btn-cek-cari" class="btn-primary" style="padding: 0 1rem;"><i data-lucide="search"></i> Cari</button>
+                            <input type="text" id="input-cek-nama" placeholder="Masukkan nama..." autocomplete="off"
+                                style="flex: 1; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                            <div id="cek-nama-dropdown" class="autocomplete-dropdown hidden"
+                                style="position: absolute; top: 100%; left: 0; right: 90px; z-index: 10;"></div>
+                            <button id="btn-cek-cari" class="btn-primary" style="padding: 0 1rem;"><i
+                                    data-lucide="search"></i> Cari</button>
                         </div>
                     </div>
                     <div style="margin-top: 1rem; position: relative;">
-                        <button id="btn-cek-periode" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; font-weight: 600;">
+                        <button id="btn-cek-periode"
+                            style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer; font-size: 0.9rem; font-weight: 600;">
                             <span id="cek-periode-label">Memuat periode...</span>
                             <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
                         </button>
                     </div>
                 </div>
-                
+
                 <div id="cek-result-container" class="hidden">
-                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
+                    <div
+                        style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
                         <span style="font-size: 0.85rem; color: var(--text-muted);">Total Penghasilan Ditemukan</span>
-                        <div id="cek-total-amount" style="font-size: 1.8rem; font-weight: 800; color: var(--accent-teal); margin-top: 0.25rem;">Rp 0</div>
+                        <div id="cek-total-amount"
+                            style="font-size: 1.8rem; font-weight: 800; color: var(--accent-teal); margin-top: 0.25rem;">
+                            Rp 0</div>
                     </div>
-                    
-                    <h4 style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-muted); text-transform: uppercase;">Rincian Riwayat</h4>
-                    <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary);">
+
+                    <h4
+                        style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-muted); text-transform: uppercase;">
+                        Rincian Riwayat</h4>
+                    <div
+                        style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary);">
                         <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
-                            <thead style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                            <thead
+                                style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
                                 <tr>
                                     <th style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">Tanggal</th>
                                     <th style="padding: 0.5rem 0.75rem; color: var(--text-secondary);">Pekerjaan</th>
@@ -598,7 +744,9 @@
                                 <!-- Data injected here -->
                             </tbody>
                         </table>
-                        <div id="cek-empty-state" class="hidden" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada data untuk pekerja ini.</div>
+                        <div id="cek-empty-state" class="hidden"
+                            style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada data untuk
+                            pekerja ini.</div>
                     </div>
                 </div>
             </div>
@@ -612,16 +760,21 @@
                     <button id="btn-close-owner-delete" class="btn-close">&times;</button>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih rentang tanggal data yang ingin dihapus. Semua data (dari semua pembuat) dalam rentang tanggal ini akan dihapus secara permanen.</p>
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih rentang
+                        tanggal data yang ingin dihapus. Semua data (dari semua pembuat) dalam rentang tanggal ini akan
+                        dihapus secara permanen.</p>
                     <div class="form-group" style="margin-bottom: 1rem;">
                         <label for="owner-delete-start">Dari Tanggal</label>
-                        <input type="date" id="owner-delete-start" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        <input type="date" id="owner-delete-start" required
+                            style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
                     </div>
                     <div class="form-group" style="margin-bottom: 1.5rem;">
                         <label for="owner-delete-end">Sampai Tanggal</label>
-                        <input type="date" id="owner-delete-end" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        <input type="date" id="owner-delete-end" required
+                            style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
                     </div>
-                    <button id="btn-confirm-owner-delete" class="btn-danger" style="width: 100%; padding: 0.75rem; font-weight: 600;">Hapus Data Terpilih</button>
+                    <button id="btn-confirm-owner-delete" class="btn-danger"
+                        style="width: 100%; padding: 0.75rem; font-weight: 600;">Hapus Data Terpilih</button>
                 </div>
             </div>
         </div>
@@ -634,19 +787,24 @@
                     <button id="btn-close-owner-report" class="btn-close">&times;</button>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;" id="owner-report-desc">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;"
+                        id="owner-report-desc">
                         Total pendapatan pekerja dari tanggal sebelum 26 bulan ini.
                     </p>
-                    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-                        <button id="btn-owner-report-period" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
+                    <div
+                        style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                        <button id="btn-owner-report-period"
+                            style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--accent-teal); background: var(--accent-teal); color: #fff; font-size: 0.82rem; cursor: pointer; font-weight: 600;">
                             <i data-lucide="calendar" style="width:14px;height:14px;"></i>
                             <span id="owner-report-period-label">Memuat periode...</span>
                         </button>
-                        <button id="btn-owner-report-excel" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        <button id="btn-owner-report-excel" class="btn-success"
+                            style="padding: 0.5rem 1rem; font-size: 0.9rem;">
                             <i data-lucide="file-spreadsheet"></i> Unduh Excel Pekerja
                         </button>
                     </div>
-                    <div style="overflow-x: auto; overflow-y: auto; max-height: 60vh; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div
+                        style="overflow-x: auto; overflow-y: auto; max-height: 60vh; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead style="background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
                                 <tr>
@@ -660,7 +818,8 @@
                             <tbody id="owner-report-body">
                                 <!-- Data injected here -->
                             </tbody>
-                            <tfoot id="owner-report-foot" style="background: var(--bg-body); border-top: 1px solid var(--border-color); font-weight: 700;">
+                            <tfoot id="owner-report-foot"
+                                style="background: var(--bg-body); border-top: 1px solid var(--border-color); font-weight: 700;">
                                 <!-- Totals injected here -->
                             </tfoot>
                         </table>
@@ -677,8 +836,10 @@
                     <button id="btn-close-excel-period" class="btn-close">&times;</button>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih periode data yang ingin diekspor:</p>
-                    <div id="excel-period-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Pilih periode data
+                        yang ingin diekspor:</p>
+                    <div id="excel-period-list"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
                         <!-- Dynamically populated by JS -->
                     </div>
                 </div>
@@ -692,23 +853,187 @@
                     <h3>Crop Foto Banner</h3>
                     <button id="btn-close-crop" class="btn-close">&times;</button>
                 </div>
-                <div id="crop-area-wrapper" style="position: relative; width: 100%; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 80vh; min-height: 450px;">
-                    <canvas id="crop-canvas" style="display: block; max-width: 100%; max-height: 80vh; cursor: move;"></canvas>
+                <div id="crop-area-wrapper"
+                    style="position: relative; width: 100%; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; max-height: 80vh; min-height: 450px;">
+                    <canvas id="crop-canvas"
+                        style="display: block; max-width: 100%; max-height: 80vh; cursor: move;"></canvas>
                     <!-- Crop overlay drawn on canvas -->
                 </div>
-                <div style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border-color);">
+                <div
+                    style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border-color);">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <label style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Zoom:</label>
-                        <input type="range" id="crop-zoom" min="10" max="200" value="100" style="width: 140px; accent-color: var(--accent-teal);">
-                        <span id="crop-zoom-label" style="font-size: 0.8rem; color: var(--text-secondary); min-width: 36px;">100%</span>
+                        <input type="range" id="crop-zoom" min="10" max="200" value="100"
+                            style="width: 140px; accent-color: var(--accent-teal);">
+                        <span id="crop-zoom-label"
+                            style="font-size: 0.8rem; color: var(--text-secondary); min-width: 36px;">100%</span>
                     </div>
                     <div style="display: flex; gap: 0.75rem;">
-                        <button id="btn-crop-cancel" class="btn-secondary" style="padding: 0.5rem 1.25rem;">Batal</button>
-                        <button id="btn-crop-save" class="btn-primary" style="padding: 0.5rem 1.25rem; display: flex; align-items: center; gap: 0.4rem;">
+                        <button id="btn-crop-cancel" class="btn-secondary"
+                            style="padding: 0.5rem 1.25rem;">Batal</button>
+                        <button id="btn-crop-save" class="btn-primary"
+                            style="padding: 0.5rem 1.25rem; display: flex; align-items: center; gap: 0.4rem;">
                             <i data-lucide="crop" style="width: 16px; height: 16px;"></i> Simpan Crop
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Modal Pengeluaran Buah Manual -->
+        <div id="modal-buah-manual" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width: 700px; width: 95%;">
+                <div class="modal-header">
+                    <h3 style="display: flex; align-items: center; gap: 0.6rem;">
+                        <span
+                            style="background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(109,40,217,0.1)); border: 1px solid rgba(139,92,246,0.3); border-radius: 8px; padding: 0.35rem 0.5rem; display: inline-flex; color: #a78bfa;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" class="lucide">
+                                <!-- Person -->
+                                <circle cx="5" cy="5" r="2" />
+                                <path d="M5 7v6" />
+                                <path d="M5 8l3 3" />
+                                <path d="M5 13l-2 5" />
+                                <path d="M5 13l2 5" />
+                                <!-- Wheelbarrow -->
+                                <path d="M8 11h3" />
+                                <path d="M11 11l2 5h5l1.5-5z" />
+                                <circle cx="19" cy="17" r="2" />
+                                <path d="M13 16v2" />
+                            </svg>
+                        </span>
+                        Pengeluaran Buah Manual
+                    </h3>
+                    <button id="btn-close-buah-modal" class="btn-close">&times;</button>
+                </div>
+
+                <form id="form-buah-manual" autocomplete="off">
+                    <!-- Row 1: Tanggal & Divisi -->
+                    <div class="form-row" style="margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label for="buah-input-tanggal">Tanggal</label>
+                            <input type="date" id="buah-input-tanggal" required style="width:100%;">
+                        </div>
+                        <div class="form-group">
+                            <label for="buah-input-divisi">Divisi / Blok</label>
+                            <input type="text" id="buah-input-divisi" placeholder="Contoh: Divisi A / OA05" required
+                                style="width:100%;">
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Field BJR & Tarif -->
+                    <div class="form-row" style="margin-bottom: 1rem; gap: 0.75rem;">
+                        <div class="form-group" style="flex: 2;">
+                            <label for="buah-input-field">Field / Afdeling <small
+                                    style="font-weight:400;color:var(--text-muted);">(tentukan BJR)</small></label>
+                            <select id="buah-input-field" required style="width:100%;">
+                                <option value="" disabled selected>Pilih Field...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>BJR (Kg/Tandan)</label>
+                            <input type="number" id="buah-display-bjr" readonly step="0.01"
+                                style="width:100%; background:var(--bg-secondary); color:var(--text-muted);"
+                                placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex: 1.2;">
+                            <label for="buah-input-rate">Tarif <small
+                                    style="font-weight:400;color:var(--text-muted);">(Rp/Ton)</small></label>
+                            <input type="number" id="buah-input-rate" value="33000" min="0" style="width:100%;">
+                        </div>
+                    </div>
+
+                    <!-- Daftar Pekerja & Tandan -->
+                    <div class="form-section-title d-flex justify-between" style="margin-bottom: 0.5rem;">
+                        <span
+                            style="font-weight: 600; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Daftar
+                            Pekerja &amp; Tandan</span>
+                        <button type="button" id="btn-add-buah-worker" class="btn-text">
+                            <i data-lucide="plus-circle"></i> Tambah Pekerja
+                        </button>
+                    </div>
+
+                    <!-- Column headers -->
+                    <div
+                        style="display: grid; grid-template-columns: 2fr 1fr 1fr 32px; gap: 0.4rem; padding: 0.3rem 0.75rem; margin-bottom: 0.35rem;">
+                        <span
+                            style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Nama
+                            Pekerja <span style="color:#a78bfa;font-size:0.65rem;">(dari database)</span></span>
+                        <span
+                            style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; text-align:center;">Jml
+                            Tandan</span>
+                        <span
+                            style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; text-align:right;">Premi
+                            (setelah hitung)</span>
+                        <span></span>
+                    </div>
+
+                    <div id="buah-workers-container"
+                        style="display: flex; flex-direction: column; gap: 0.45rem; padding-right: 0.25rem; margin-bottom: 1rem; overflow: visible;">
+                        <!-- Dynamic rows added here -->
+                    </div>
+
+                    <!-- Summary -->
+                    <div
+                        style="background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.2); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 0.75rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <div
+                            style="text-align: center; border-right: 1px solid rgba(139,92,246,0.15); padding-right: 0.5rem;">
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">
+                                Total Tandan</div>
+                            <div id="buah-total-tandan" style="font-size: 1.15rem; font-weight: 800; color: #a78bfa;">0
+                                Tandan</div>
+                        </div>
+                        <div style="text-align: center; padding-left: 0.5rem;">
+                            <div
+                                style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">
+                                Total Premi</div>
+                            <div id="buah-total-premi"
+                                style="font-size: 1.15rem; font-weight: 800; color: var(--accent-gold);">Rp 0</div>
+                        </div>
+                    </div>
+
+                    <!-- Formula info -->
+                    <div id="buah-formula-info"
+                        style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin-bottom: 1rem; display: none;">
+                        Formula: <strong id="buah-formula-text">Tandan × BJR ÷ 1000 × Rp/ton</strong>
+                    </div>
+
+                    <!-- Hitung Premi Result Panel (hidden until calculated) -->
+                    <div id="buah-calc-result" class="hidden"
+                        style="background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(109,40,217,0.06)); border: 1px solid rgba(139,92,246,0.35); border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-bottom: 1rem;">
+                        <div
+                            style="font-size: 0.72rem; color: #a78bfa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <i data-lucide="check-circle" style="width:13px;height:13px;"></i> Hasil Perhitungan Premi
+                        </div>
+                        <div id="buah-calc-detail"
+                            style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.7;"></div>
+                        <div
+                            style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid rgba(139,92,246,0.2); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Grand Total
+                                Premi:</span>
+                            <span id="buah-calc-grand-total"
+                                style="font-size: 1.2rem; font-weight: 800; color: var(--accent-gold);">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: center;">
+                        <button type="button" id="btn-cancel-buah-modal" class="btn-secondary"
+                            style="padding: 0.5rem 1rem;">Batal</button>
+                        <div style="display: flex; gap: 0.6rem;">
+                            <button type="button" id="btn-hitung-premi-buah" class="btn-secondary"
+                                style="padding: 0.5rem 1.1rem; display: flex; align-items: center; gap: 0.4rem; border-color: rgba(139,92,246,0.5); color: #a78bfa;">
+                                <i data-lucide="calculator"></i> Hitung Premi
+                            </button>
+                            <button type="submit" id="btn-simpan-buah" class="btn-primary" disabled
+                                style="padding: 0.5rem 1.25rem; background: linear-gradient(135deg, #7c3aed, #5b21b6); border-color: #7c3aed; display: flex; align-items: center; gap: 0.4rem; opacity: 0.45; cursor: not-allowed;">
+                                <i data-lucide="save"></i> Simpan Catatan
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -721,7 +1046,7 @@
             <p>&copy; 2026 DxtaPremi. Dibuat dengan presisi untuk pencatatan premi kelapa sawit.</p>
         </footer>
     </div>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=19"></script>
 </body>
 
 </html>
