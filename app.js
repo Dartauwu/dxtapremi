@@ -447,7 +447,7 @@ function initBannerUploader() {
     let cropDragStartY = 0;
     let cropStartOffX = 0;
     let cropStartOffY = 0;
-    const CROP_ASPECT = 16 / 5;  // Banner aspect ratio
+    const CROP_ASPECT = 2 / 1;   // Banner aspect ratio changed from 16/5 to 2/1 to allow taller photos
     const OUTPUT_W = 2000;       // Output crop width (higher res)
     const OUTPUT_H = Math.round(OUTPUT_W / CROP_ASPECT);
 
@@ -2046,6 +2046,19 @@ function renderHistoryTable() {
         return false;
     });
 
+    // If 'Semua Kategori' is active, also inject Buah Manual records
+    if (state.activeTab === 'tab-all') {
+        const buahFiltered = state.buahRecords.filter(rec => {
+            const dateParts = rec.date.split('-');
+            const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+            return recDateObj >= periodStart && recDateObj <= periodEnd;
+        });
+        buahFiltered.forEach(b => {
+            b.isBuahManual = true;
+            filteredRecords.push(b);
+        });
+    }
+
     // Sort by date descending (terbaru di atas) untuk tampilan web
     filteredRecords.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
 
@@ -2065,6 +2078,97 @@ function renderHistoryTable() {
     filteredRecords.forEach((rec, index) => {
         const tr = document.createElement('tr');
 
+        // ==== BUAH MANUAL RENDERING LOGIC ====
+        if (rec.isBuahManual) {
+            const bjr = rec.bjr || 0;
+            const rate = rec.rate || 33000;
+
+            let workersCellHTML = '<div class="worker-badge-cell">';
+            (rec.workers || []).forEach(w => {
+                const tandan = w.tandan || 0;
+                const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+                workersCellHTML += `
+                    <div class="wb-item">
+                        <span class="wb-role" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">PEKRJ</span>
+                        <span class="wb-name">${w.name}</span>
+                        <span class="wb-nik" style="color:var(--accent-purple);">${w.nik || '-'}</span>
+                        <strong style="color:#a78bfa;margin-left:0.25rem;">(${tandan.toLocaleString('id-ID')} Tdn)</strong>
+                        <strong style="color:var(--accent-gold);margin-left:0.25rem;">${formatRupiah(premi)}</strong>
+                    </div>
+                `;
+            });
+            workersCellHTML += '</div>';
+
+            const totalTon = ((rec.totalTandan || 0) * bjr / 1000);
+            const resultDetail = `
+                <div style="margin-bottom:3px;"><strong>${(rec.totalTandan || 0).toLocaleString('id-ID')}</strong> Tandan</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);">Field: <strong>${rec.field || '-'}</strong> | BJR: ${bjr} Kg</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);">Tonase: ${totalTon.toFixed(3)} Ton</div>
+            `;
+
+            const premiBrk = (rec.workers || []).map(w => {
+                const tandan = w.tandan || 0;
+                const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+                return `${w.name.split(' ')[0]}: ${formatRupiah(premi)}`;
+            }).join('<br>');
+
+            let actionCellHTML = '';
+            if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+                actionCellHTML = `
+                    <td data-label="Aksi">
+                        <div class="action-btn-group">
+                            <button type="button" class="btn-delete-row" title="Hapus catatan ini">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+            } else {
+                actionCellHTML = `<td data-label="Aksi"></td>`;
+            }
+
+            tr.innerHTML = `
+                <td data-label="No">${index + 1}</td>
+                <td data-label="Tanggal">${rec.date}</td>
+                <td data-label="Kategori"><span class="cat-badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);">Buah Manual</span></td>
+                <td data-label="Dicatat Oleh"><span class="created-by-badge" style="font-size:0.8rem;padding:2px 6px;background:rgba(255,255,255,0.06);border-radius:4px;display:inline-block;font-weight:500;">${rec.createdBy || 'Public'}</span></td>
+                <td data-label="Lokasi"><strong>${rec.division || '-'}</strong></td>
+                <td data-label="Unit/Kendaraan" style="font-size:0.82rem;color:var(--text-muted);">Tarif: ${formatRupiah(rate)}/Ton</td>
+                <td data-label="Pekerja & Peran">${workersCellHTML}</td>
+                <td data-label="Hasil Kerja"><strong>${resultDetail}</strong></td>
+                <td data-label="Premi" style="font-size:0.8rem;line-height:1.4;">${premiBrk}</td>
+                <td data-label="Total Premi"><strong style="color:var(--primary-light);font-size:1rem">${formatRupiah(rec.totalPremi || 0)}</strong></td>
+                ${actionCellHTML}
+            `;
+
+            if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+                const btnDel = tr.querySelector('.btn-delete-row');
+                if (btnDel) {
+                    btnDel.addEventListener('click', async () => {
+                        if (confirm('Hapus catatan pengeluaran buah manual ini?')) {
+                            const idx = state.buahRecords.findIndex(r => r.id === rec.id);
+                            if (idx > -1) {
+                                state.buahRecords.splice(idx, 1);
+                                saveBuahRecordsLocal();
+                                updateBuahCardStats();
+                                renderHistoryTable(); // Refresh the table
+                                try {
+                                    await deleteBuahRecordOnline(rec.id);
+                                    showToast('Catatan buah berhasil dihapus.');
+                                } catch (e) {
+                                    showToast('Dihapus lokal, gagal hapus online.', true);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            tbody.appendChild(tr);
+            return; // Skip normal rendering
+        }
+
+        // ==== NORMAL RENDERING LOGIC ====
         const catLabels = {
             'dump-truck': 'Dump Truck',
             'tractor': 'Traktor',
@@ -2584,28 +2688,43 @@ function updateStats() {
     const totalPremi = state.records.reduce((acc, curr) => acc + curr.totalPremi, 0);
 
     // Calculate Brondolan Stats
-    let rawBronTerkumpulToday = 0;
     let rawBronTerkumpulTotal = 0;
-    let bronTerkirimToday = 0;
     let bronTerkirimTotal = 0;
+    let rawBronTerkumpulRecent = 0;
+    let bronTerkirimRecent = 0;
+
+    const { start: pStart, end: pEnd } = getPeriodDates(0);
+    const RECENT_START_DATE = new Date(2026, 6, 4); // 4 Juli 2026 (Month is 0-indexed)
+
+    // Ensure recent start is bounded by period start (so it auto-resets next period)
+    const recentBound = pStart > RECENT_START_DATE ? pStart : RECENT_START_DATE;
 
     state.records.forEach(rec => {
-        let isToday = (rec.date === today);
-        if (rec.category === 'brondolan') {
-            rawBronTerkumpulTotal += (rec.tonnage || 0); // tonnage stores total kg for brondolan
-            if (isToday) rawBronTerkumpulToday += (rec.tonnage || 0);
-        } else if (rec.category === 'dump-truck') {
-            bronTerkirimTotal += (rec.brondolanSentKg || 0);
-            if (isToday) bronTerkirimToday += (rec.brondolanSentKg || 0);
+        const dp = rec.date.split('-');
+        const recDate = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+
+        // Tally totals for the full current period
+        if (recDate >= pStart && recDate <= pEnd) {
+            if (rec.category === 'brondolan') {
+                rawBronTerkumpulTotal += (rec.tonnage || 0);
+            } else if (rec.category === 'dump-truck') {
+                bronTerkirimTotal += (rec.brondolanSentKg || 0);
+            }
+        }
+        
+        // Tally totals for recent active pile (from 4 July onwards, within period)
+        if (recDate >= recentBound && recDate <= pEnd) {
+            if (rec.category === 'brondolan') {
+                rawBronTerkumpulRecent += (rec.tonnage || 0);
+            } else if (rec.category === 'dump-truck') {
+                bronTerkirimRecent += (rec.brondolanSentKg || 0);
+            }
         }
     });
     
-    // Brondolan Terkumpul is now a balance (Sisa = Dikumpulkan - Dikirim)
-    const bronTerkumpulTotal = Math.max(0, rawBronTerkumpulTotal - bronTerkirimTotal);
-    
-    // For today, it's also a balance if they want it dynamically deducted, or just the net difference. 
-    // Usually, sisa hari ini = dikumpulkan hari ini - dikirim hari ini.
-    const bronTerkumpulToday = Math.max(0, rawBronTerkumpulToday - bronTerkirimToday);
+    // Calculate balances
+    const bronTerkumpulTotalBal = Math.max(0, rawBronTerkumpulTotal - bronTerkirimTotal);
+    const bronTerkumpulRecentBal = Math.max(0, rawBronTerkumpulRecent - bronTerkirimRecent);
 
     let dateRangeStr = 'Belum ada data';
     if (state.records.length > 0) {
@@ -2640,16 +2759,19 @@ function updateStats() {
         elSubPremi.textContent = `Total ${dateRangeStr}: ${formatRupiah(totalPremi)}`;
     }
 
+    // Determine the string for the period start date
+    const pStartStr = pStart.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
     // Update Brondolan DOM elements
     const elBronTerkumpul = document.getElementById('stat-bron-terkumpul');
     const elBronTerkumpulSub = document.getElementById('stat-sub-bron-terkumpul');
-    if (elBronTerkumpul) elBronTerkumpul.textContent = `${bronTerkumpulToday.toLocaleString('id-ID')} Kg`;
-    if (elBronTerkumpulSub) elBronTerkumpulSub.textContent = `Total ${dateRangeStr}: ${bronTerkumpulTotal.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkumpul) elBronTerkumpul.textContent = `${bronTerkumpulRecentBal.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkumpulSub) elBronTerkumpulSub.textContent = `Total (mulai ${pStartStr}): ${bronTerkumpulTotalBal.toLocaleString('id-ID')} Kg`;
 
     const elBronTerkirim = document.getElementById('stat-bron-terkirim');
     const elBronTerkirimSub = document.getElementById('stat-sub-bron-terkirim');
-    if (elBronTerkirim) elBronTerkirim.textContent = `${bronTerkirimToday.toLocaleString('id-ID')} Kg`;
-    if (elBronTerkirimSub) elBronTerkirimSub.textContent = `Total ${dateRangeStr}: ${bronTerkirimTotal.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkirim) elBronTerkirim.textContent = `${bronTerkirimRecent.toLocaleString('id-ID')} Kg`;
+    if (elBronTerkirimSub) elBronTerkirimSub.textContent = `Total (mulai ${pStartStr}): ${bronTerkirimTotal.toLocaleString('id-ID')} Kg`;
 
     // Update per-category card stats
     updateCardStats();
@@ -4524,7 +4646,7 @@ function renderBuahHistoryTable() {
             actionCellHTML = `
                 <td data-label="Aksi">
                     <div class="action-btn-group">
-                        <button type="button" class="btn-delete-buah-row" title="Hapus catatan ini">
+                        <button type="button" class="btn-delete-row" title="Hapus catatan ini">
                             <i data-lucide="trash-2"></i>
                         </button>
                     </div>
@@ -4550,7 +4672,7 @@ function renderBuahHistoryTable() {
 
         // Bind delete
         if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
-            const btnDel = tr.querySelector('.btn-delete-buah-row');
+            const btnDel = tr.querySelector('.btn-delete-row');
             if (btnDel) {
                 btnDel.addEventListener('click', async () => {
                     if (confirm('Hapus catatan pengeluaran buah manual ini?')) {
