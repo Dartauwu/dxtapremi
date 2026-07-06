@@ -2945,7 +2945,18 @@ function exportToExcel(periodIndex = 0) {
             return d >= periodStart && d <= periodEnd;
         });
 
-        if (periodRecords.length === 0) {
+        if (periodRecords.length === 0 && state.buahRecords.length === 0) {
+            showToast(`Tidak ada data untuk periode terpilih.`, true);
+            return;
+        }
+
+        const periodBuahRecords = state.buahRecords.filter(rec => {
+            const dp = rec.date.split('-');
+            const d = new Date(parseInt(dp[0], 10), parseInt(dp[1], 10) - 1, parseInt(dp[2], 10));
+            return d >= periodStart && d <= periodEnd;
+        });
+
+        if (periodRecords.length === 0 && periodBuahRecords.length === 0) {
             showToast(`Tidak ada data untuk periode terpilih.`, true);
             return;
         }
@@ -2961,7 +2972,7 @@ function exportToExcel(periodIndex = 0) {
                 const dNik = driver.nik;
                 const dName = driver.name;
                 if (!summaryMap[dNik]) {
-                    summaryMap[dNik] = { NIK: dNik, Nama: dName, DumpTruck: 0, Traktor: 0, Brondolan: 0, Total: 0 };
+                    summaryMap[dNik] = { NIK: dNik, Nama: dName, DumpTruck: 0, Traktor: 0, Brondolan: 0, BuahManual: 0, Total: 0 };
                 }
                 if (rec.category === 'dump-truck') summaryMap[dNik].DumpTruck += driver.amount;
                 if (rec.category === 'tractor') summaryMap[dNik].Traktor += driver.amount;
@@ -2974,12 +2985,29 @@ function exportToExcel(periodIndex = 0) {
                 const lNik = loader.nik;
                 const lName = loader.name;
                 if (!summaryMap[lNik]) {
-                    summaryMap[lNik] = { NIK: lNik, Nama: lName, DumpTruck: 0, Traktor: 0, Brondolan: 0, Total: 0 };
+                    summaryMap[lNik] = { NIK: lNik, Nama: lName, DumpTruck: 0, Traktor: 0, Brondolan: 0, BuahManual: 0, Total: 0 };
                 }
                 if (rec.category === 'dump-truck') summaryMap[lNik].DumpTruck += loader.amount;
                 if (rec.category === 'tractor') summaryMap[lNik].Traktor += loader.amount;
                 if (rec.category === 'brondolan') summaryMap[lNik].Brondolan += loader.amount;
                 summaryMap[lNik].Total += loader.amount;
+            });
+        });
+
+        periodBuahRecords.forEach(rec => {
+            (rec.workers || []).forEach(worker => {
+                const wNik = worker.nik;
+                const wName = worker.name;
+                if (!summaryMap[wNik]) {
+                    summaryMap[wNik] = { NIK: wNik, Nama: wName, DumpTruck: 0, Traktor: 0, Brondolan: 0, BuahManual: 0, Total: 0 };
+                }
+                const bjr = rec.bjr || 0;
+                const rate = rec.rate || 33000;
+                const tandan = worker.tandan || 0;
+                const premi = worker.premi !== undefined ? worker.premi : calcBuahPremi(tandan, bjr, rate);
+                
+                summaryMap[wNik].BuahManual += premi;
+                summaryMap[wNik].Total += premi;
             });
         });
 
@@ -2990,6 +3018,7 @@ function exportToExcel(periodIndex = 0) {
             "Premi Dump Truck (Rp)": item.DumpTruck,
             "Premi Traktor (Rp)": item.Traktor,
             "Premi Brondolan (Rp)": item.Brondolan,
+            "Premi Buah Manual (Rp)": item.BuahManual,
             "Grand Total Premi (Rp)": item.Total
         }));
 
@@ -3020,6 +3049,7 @@ function exportToExcel(periodIndex = 0) {
 
         let dtNo = 1;
         const kontraktorDriverRows = [];
+        const damDriverRows = [];
         dtRecords.forEach(rec => {
             const recordStartRow = dtAOA.length;
             const dateStrFormatted = formatTanggalIndo(rec.date);
@@ -3108,6 +3138,7 @@ function exportToExcel(periodIndex = 0) {
                         null,                                // JML HK
                         driver.amount                        // HASIL/HK (premi supir)
                     ]);
+                    damDriverRows.push(dtAOA.length - 1);
                 }
             });
 
@@ -3185,6 +3216,16 @@ function exportToExcel(periodIndex = 0) {
             }
         });
 
+        // Highlight sel supir DAM truck dengan warna hijau sesuai permintaan user
+        damDriverRows.forEach(r => {
+            const addr = XLSX.utils.encode_cell({ r: r, c: 4 }); // Kolom E (NAMA) index 4
+            if (wsDT[addr]) {
+                wsDT[addr].s = {
+                    fill: { fgColor: { rgb: "FF00FF00" } } // Hijau
+                };
+            }
+        });
+
         XLSX.utils.book_append_sheet(wb, wsDT, "Loading Dump Truck");
 
         // ----------------------------------------------------
@@ -3216,8 +3257,8 @@ function exportToExcel(periodIndex = 0) {
                     loader.nik,                                          // ID
                     loader.name,                                         // NAMA
                     lIdx === 0 ? rec.vehicle : null,                     // TRAKTOR (No. Lambung)
-                    lIdx === 0 ? primaryDriver.field : null,             // FIELD
-                    lIdx === 0 ? primaryDriver.janjang : null,           // TANDAN
+                    lIdx === 0 ? (rec.tractorField || '-') : null,       // FIELD
+                    lIdx === 0 ? (rec.tractorJanjang || 0) : null,       // TANDAN
                     lIdx === 0 ? primaryDriver.bjr : null,               // BJR
                     lIdx === 0 ? rec.tonnage : null,                     // TONASE (Total Tonase kelompok)
                     lIdx === 0 ? rec.rates.loader : null,                // PREMI (Pemuat)
@@ -3407,6 +3448,76 @@ function exportToExcel(periodIndex = 0) {
         ];
 
         XLSX.utils.book_append_sheet(wb, wsBR, "Ketek Brondolan");
+
+        // ----------------------------------------------------
+        // 5. SHEET BUAH MANUAL
+        // ----------------------------------------------------
+        const bmRecords = periodBuahRecords.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+        const bmAOA = [];
+        const bmMerges = [];
+        let bmNo = 1;
+
+        bmAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'LOKASI / FIELD', 'BJR', 'NAMA PEKERJA', 'ID', 'JUMLAH TANDAN', 'TONASE', 'PREMI/TON', 'PREMI PEKERJA']);
+
+        bmRecords.forEach(rec => {
+            const startRow = bmAOA.length;
+            const dateStrFormatted = formatTanggalIndo(rec.date);
+            const bjr = rec.bjr || 0;
+            const rate = rec.rate || 33000;
+            
+            if (!rec.workers || rec.workers.length === 0) return;
+            
+            rec.workers.forEach((worker, wIdx) => {
+                const tandan = worker.tandan || 0;
+                const premi = worker.premi !== undefined ? worker.premi : calcBuahPremi(tandan, bjr, rate);
+                const tonase = (tandan * bjr) / 1000;
+                
+                bmAOA.push([
+                    wIdx === 0 ? bmNo++ : null,
+                    wIdx === 0 ? dateStrFormatted : null,
+                    wIdx === 0 ? (rec.createdBy || 'Public') : null,
+                    wIdx === 0 ? (rec.division || rec.field || '-') : null,
+                    wIdx === 0 ? bjr : null,
+                    worker.name,
+                    worker.nik,
+                    tandan,
+                    tonase,
+                    wIdx === 0 ? rate : null,
+                    premi
+                ]);
+            });
+            
+            const endRow = bmAOA.length - 1;
+            if (endRow > startRow) {
+                [0, 1, 2, 3, 4, 9].forEach(c => {
+                    bmMerges.push({ s: { r: startRow, c: c }, e: { r: endRow, c: c } });
+                });
+            }
+        });
+        
+        if (bmAOA.length > 1) {
+            const wsBM = XLSX.utils.aoa_to_sheet(bmAOA);
+            if (bmMerges.length > 0) wsBM['!merges'] = bmMerges;
+            
+            for (let r = 1; r < bmAOA.length; r++) {
+                const addrTon = XLSX.utils.encode_cell({ r, c: 8 });
+                if (wsBM[addrTon] && wsBM[addrTon].t === 'n') wsBM[addrTon].z = '#,##0.000';
+                
+                const addrRate = XLSX.utils.encode_cell({ r, c: 9 });
+                if (wsBM[addrRate] && wsBM[addrRate].t === 'n') wsBM[addrRate].z = '"Rp "#,##0';
+                
+                const addrPremi = XLSX.utils.encode_cell({ r, c: 10 });
+                if (wsBM[addrPremi] && wsBM[addrPremi].t === 'n') wsBM[addrPremi].z = '"Rp "#,##0';
+            }
+            
+            wsBM['!cols'] = [
+                { wch: 6 },  { wch: 24 }, { wch: 18 }, { wch: 15 }, { wch: 8 },
+                { wch: 22 }, { wch: 10 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, wsBM, "Buah Manual");
+        }
+
 
         // ----------------------------------------------------
         // Generasi File & Download
