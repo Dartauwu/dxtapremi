@@ -1610,7 +1610,7 @@ input[readonly] {
     border-color: var(--danger);
 }
 
-/* Edit Mode Submit Button — blue gradient */
+/* Edit Mode Submit Button â€” blue gradient */
 .btn-edit-mode {
     background: linear-gradient(135deg, hsl(217, 91%, 45%), hsl(217, 91%, 60%)) !important;
     box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25) !important;
@@ -1739,10 +1739,10 @@ input[readonly] {
 }
 
 /* ============================================================
-   RESPONSIVE DESIGN — Semua Ukuran Layar
+   RESPONSIVE DESIGN â€” Semua Ukuran Layar
    ============================================================ */
 
-/* ── Large Desktop (≥ 1600px) ── */
+/* â”€â”€ Large Desktop (â‰¥ 1600px) â”€â”€ */
 @media (min-width: 1600px) {
     .app-container {
         max-width: 1600px;
@@ -1758,7 +1758,7 @@ input[readonly] {
     }
 }
 
-/* ── Small Laptop / Tablet Landscape (≤ 1024px) ── */
+/* â”€â”€ Small Laptop / Tablet Landscape (â‰¤ 1024px) â”€â”€ */
 @media (max-width: 1024px) {
     .app-container {
         padding: 1.25rem;
@@ -1812,7 +1812,7 @@ input[readonly] {
     }
 }
 
-/* ── Tablet / Large Phone Landscape (≤ 768px) ── */
+/* â”€â”€ Tablet / Large Phone Landscape (â‰¤ 768px) â”€â”€ */
 @media (max-width: 768px) {
     .app-container {
         padding: 1rem;
@@ -2038,7 +2038,7 @@ input[readonly] {
     }
 }
 
-/* ── Tablet Portrait & Mobile Card Table (≤ 768px) ── */
+/* â”€â”€ Tablet Portrait & Mobile Card Table (â‰¤ 768px) â”€â”€ */
 @media (max-width: 768px) {
     .table-card {
         background: transparent;
@@ -2170,7 +2170,7 @@ input[readonly] {
     }
 }
 
-/* ── Mobile (≤ 480px) ── */
+/* â”€â”€ Mobile (â‰¤ 480px) â”€â”€ */
 @media (max-width: 480px) {
     .app-container {
         padding: 0.75rem;
@@ -2350,7 +2350,7 @@ input[readonly] {
     }
 }
 
-/* ── Extra Small Mobile (≤ 360px) ── */
+/* â”€â”€ Extra Small Mobile (â‰¤ 360px) â”€â”€ */
 @media (max-width: 360px) {
     .app-container {
         padding: 0.5rem;
@@ -2403,7 +2403,7 @@ input[readonly] {
     }
 }
 
-/* ── Utility: Prevent text overflow globally ── */
+/* â”€â”€ Utility: Prevent text overflow globally â”€â”€ */
 * {
     word-break: break-word;
 }
@@ -2412,7 +2412,7 @@ img, video, iframe, table {
     max-width: 100%;
 }
 
-/* ── Touch devices: larger tap targets ── */
+/* â”€â”€ Touch devices: larger tap targets â”€â”€ */
 @media (hover: none) and (pointer: coarse) {
     .btn-primary,
     .btn-secondary,
@@ -2441,7 +2441,7 @@ img, video, iframe, table {
     }
 }
 
-/* ── Live Calculation Feedback Info ── */
+/* â”€â”€ Live Calculation Feedback Info â”€â”€ */
 .live-calc-info {
     margin-top: 0.5rem;
     padding: 0.65rem 0.85rem;
@@ -2681,5 +2681,10 @@ html {
     }
     .form-actions {
         flex-direction: column-reverse;
-    }
+}
+
+.krani-card:hover {
+    background: rgba(249, 115, 22, 0.15) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.1), 0 2px 4px -1px rgba(249, 115, 22, 0.06);
 }
