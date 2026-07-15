@@ -3025,6 +3025,122 @@ function exportToExcel(periodIndex = 0) {
         const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
         XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan Premi");
 
+        // ----------------------------------------------------
+        // 1.5. SHEET RINCIAN TONASE HARIAN
+        // ----------------------------------------------------
+        const datesInPeriod = [];
+        let cur = new Date(periodStart);
+        while (cur <= periodEnd) {
+            const y = cur.getFullYear();
+            const m = String(cur.getMonth() + 1).padStart(2, '0');
+            const d = String(cur.getDate()).padStart(2, '0');
+            datesInPeriod.push({
+                fullStr: `${y}-${m}-${d}`,
+                day: cur.getDate()
+            });
+            cur.setDate(cur.getDate() + 1);
+        }
+
+        const tonaseMap = {}; // { NIK: { NIK, Nama, [dayStr]: tonnage, Total: tonnage } }
+
+        periodRecords.forEach(rec => {
+            // Hanya Dump Truck
+            if (rec.category !== 'dump-truck') return;
+            const dateStr = rec.date;
+
+            // Loaders (Pemuat) selalu dihitung, termasuk untuk mobil kontraktor
+            const tonsForLoader = (rec.tonnagePemuat !== undefined && rec.tonnagePemuat > 0) ? rec.tonnagePemuat : rec.tonnage;
+            const potPemuat = rec.potonganPemuat || 0;
+            const effLoaderTon = Math.max(0, tonsForLoader - potPemuat);
+            const tonPerHk = rec.loaders.length > 0 ? (effLoaderTon / rec.loaders.length) : 0;
+
+            rec.loaders.forEach(loader => {
+                if (!tonaseMap[loader.nik]) tonaseMap[loader.nik] = { NIK: loader.nik, Nama: loader.name, Total: 0 };
+                tonaseMap[loader.nik][dateStr] = (tonaseMap[loader.nik][dateStr] || 0) + tonPerHk;
+                tonaseMap[loader.nik].Total += tonPerHk;
+            });
+
+            // Drivers (Supir) - tidak termasuk mobil kontraktor
+            if (rec.carType !== 'MOBIL KONTRAKTOR') {
+                const totalDriverTon = rec.drivers.reduce((a, d) => a + (d.tonnage || 0), 0);
+                const potSupir = rec.potonganHK || 0;
+                rec.drivers.forEach(driver => {
+                    const potD = (totalDriverTon > 0 && potSupir > 0) ? ((driver.tonnage / totalDriverTon) * potSupir) : 0;
+                    const effD = Math.max(0, driver.tonnage - potD);
+                    if (!tonaseMap[driver.nik]) tonaseMap[driver.nik] = { NIK: driver.nik, Nama: driver.name, Total: 0, isDriver: true };
+                    else tonaseMap[driver.nik].isDriver = true;
+                    
+                    tonaseMap[driver.nik][dateStr] = (tonaseMap[driver.nik][dateStr] || 0) + effD;
+                    tonaseMap[driver.nik].Total += effD;
+                });
+            }
+        });
+
+        // Convert to AOA
+        const thAOA = [];
+        const thHeader = ['NO', 'ID', 'NAMA'];
+        datesInPeriod.forEach(d => thHeader.push(d.day));
+        thHeader.push('TOTAL');
+        thAOA.push(thHeader);
+
+        let thNo = 1;
+        const driverRows = []; // untuk menyorot warna kuning
+
+        // Sort by name
+        const sortedTonaseItems = Object.values(tonaseMap).sort((a, b) => a.Nama.localeCompare(b.Nama));
+        
+        sortedTonaseItems.forEach(item => {
+            if (item.Total === 0) return; // skip if no tonnage
+            const row = [thNo++, item.NIK, item.Nama];
+            datesInPeriod.forEach(d => {
+                row.push(item[d.fullStr] ? item[d.fullStr] : null);
+            });
+            row.push(item.Total);
+            thAOA.push(row);
+            
+            if (item.isDriver) {
+                driverRows.push(thAOA.length - 1);
+            }
+        });
+
+        const wsTH = XLSX.utils.aoa_to_sheet(thAOA);
+        
+        // Format angka desimal 3
+        for (let r = 1; r < thAOA.length; r++) {
+            for (let c = 3; c < thAOA[r].length; c++) {
+                const addr = XLSX.utils.encode_cell({ r, c });
+                if (wsTH[addr] && wsTH[addr].t === 'n') {
+                    wsTH[addr].z = '#,##0.000';
+                }
+            }
+        }
+
+        // Highlight sel NAMA (kolom C, index 2) dan ID (kolom B, index 1) dengan warna kuning untuk supir
+        driverRows.forEach(r => {
+            // NAMA
+            const addrNama = XLSX.utils.encode_cell({ r: r, c: 2 });
+            if (wsTH[addrNama]) {
+                wsTH[addrNama].s = {
+                    fill: { fgColor: { rgb: "FFFFFF00" } }
+                };
+            }
+            // ID (di screenshot kadang ID juga terpengaruh atau bisa jadi seluruh baris? Gambar menunjukkan warna kuning untuk ID dan NAMA)
+            const addrID = XLSX.utils.encode_cell({ r: r, c: 1 });
+            if (wsTH[addrID]) {
+                wsTH[addrID].s = {
+                    fill: { fgColor: { rgb: "FFFFFF00" } }
+                };
+            }
+        });
+        
+        // Define column widths
+        const thCols = [ { wch: 5 }, { wch: 12 }, { wch: 22 } ];
+        datesInPeriod.forEach(() => thCols.push({ wch: 8 }));
+        thCols.push({ wch: 12 });
+        wsTH['!cols'] = thCols;
+
+        XLSX.utils.book_append_sheet(wb, wsTH, "Rincian Tonase Harian");
+
         // Helper: format tanggal ke teks Indonesia kapital (contoh: RABU 10 JUNI 2026)
         function formatTanggalIndo(dateStr) {
             const hariArr = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -3045,7 +3161,7 @@ function exportToExcel(periodIndex = 0) {
         const dtMerges = [];
 
         // Header tunggal untuk tabel gabungan (tambah BRONDOLAN)
-        dtAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'ID', 'NAMA', 'TONASE LOADING TOTAL', 'POTONGAN', 'TON BERSIH', 'BRONDOLAN (KG)', 'PREMI/TON', 'JML HK', 'HASIL/HK']);
+        dtAOA.push(['NO', 'WAKTU', 'DICATAT OLEH', 'ID', 'NAMA', 'TONASE LOADING TOTAL', 'POTONGAN', 'TON BERSIH', 'ton per/hk', 'BRONDOLAN (KG)', 'PREMI/TON', 'JML HK', 'HASIL/HK']);
 
         let dtNo = 1;
         const kontraktorDriverRows = [];
@@ -3067,6 +3183,7 @@ function exportToExcel(periodIndex = 0) {
             rec.loaders.forEach((loader, lIdx) => {
                 const bronVal = (lIdx === 0 && !hasOutputBrondolan && rec.brondolanSentKg) ? rec.brondolanSentKg : null;
                 if (bronVal) hasOutputBrondolan = true;
+                const tonPerHk = rec.loaders.length > 0 ? (effectiveTonnageLoader / rec.loaders.length) : 0;
 
                 dtAOA.push([
                     dtNo++,
@@ -3077,6 +3194,7 @@ function exportToExcel(periodIndex = 0) {
                     lIdx === 0 ? tonsForLoader : null,       // TONASE LOADING TOTAL (merged pemuat)
                     lIdx === 0 ? (potonganPemuatVal > 0 ? potonganPemuatVal : null) : null, // POTONGAN
                     lIdx === 0 ? effectiveTonnageLoader : null, // TON BERSIH
+                    tonPerHk,                                // ton per/hk
                     bronVal,                                 // BRONDOLAN (KG)
                     lIdx === 0 ? rec.rates.loader : null,    // PREMI/TON
                     lIdx === 0 ? rec.loaders.length : null,  // JML HK (angka biasa, bukan Rp)
@@ -3087,7 +3205,7 @@ function exportToExcel(periodIndex = 0) {
 
             // Merge kolom pemuat (TONASE s/d JML HK) jika pemuat > 1
             if (rec.loaders.length > 1) {
-                [5, 6, 7, 9, 10].forEach(c => { // skip 8 (BRONDOLAN) because it is merged for the whole record
+                [5, 6, 7, 10, 11].forEach(c => { // skip 8 (ton per/hk) and 9 (BRONDOLAN) because it is merged for the whole record
                     dtMerges.push({ s: { r: loaderStartRow, c: c }, e: { r: loaderEndRow, c: c } });
                 });
             }
@@ -3111,6 +3229,7 @@ function exportToExcel(periodIndex = 0) {
                         driver.tonnage || null,               // TONASE (tonase saja)
                         null,                                // POTONGAN
                         null,                                // TON BERSIH
+                        null,                                // ton per/hk
                         bronVal,                             // BRONDOLAN (KG)
                         null,                                // PREMI/TON
                         null,                                // JML HK
@@ -3133,6 +3252,7 @@ function exportToExcel(periodIndex = 0) {
                         driver.tonnage,                      // TONASE
                         potPerDriver || null,                 // POTONGAN
                         effTon,                              // TON BERSIH
+                        null,                                // ton per/hk
                         bronVal,                             // BRONDOLAN (KG)
                         rec.rates.driver,                    // PREMI/TON
                         null,                                // JML HK
@@ -3149,7 +3269,7 @@ function exportToExcel(periodIndex = 0) {
                 dtMerges.push({ s: { r: recordStartRow, c: 1 }, e: { r: recordEndRow, c: 1 } }); // WAKTU
                 dtMerges.push({ s: { r: recordStartRow, c: 2 }, e: { r: recordEndRow, c: 2 } }); // DICATAT OLEH
                 if (rec.brondolanSentKg) {
-                    dtMerges.push({ s: { r: recordStartRow, c: 8 }, e: { r: recordEndRow, c: 8 } }); // BRONDOLAN
+                    dtMerges.push({ s: { r: recordStartRow, c: 9 }, e: { r: recordEndRow, c: 9 } }); // BRONDOLAN
                 }
             }
         });
@@ -3167,23 +3287,23 @@ function exportToExcel(periodIndex = 0) {
             // Skip header rows
             if (typeof rowData[0] === 'string' && isNaN(rowData[0])) continue;
 
-            // Desimal 3: TONASE (5), POTONGAN (6), TON BERSIH (7)
-            [5, 6, 7].forEach(c => {
+            // Desimal 3: TONASE (5), POTONGAN (6), TON BERSIH (7), ton per/hk (8)
+            [5, 6, 7, 8].forEach(c => {
                 const addr = XLSX.utils.encode_cell({ r, c });
                 if (wsDT[addr] && wsDT[addr].t === 'n') wsDT[addr].z = '#,##0.000';
             });
-            // Rupiah: PREMI/TON (9 shifted from 8)
-            const addrPremi = XLSX.utils.encode_cell({ r, c: 9 });
+            // Rupiah: PREMI/TON (10)
+            const addrPremi = XLSX.utils.encode_cell({ r, c: 10 });
             if (wsDT[addrPremi] && wsDT[addrPremi].t === 'n') wsDT[addrPremi].z = '"Rp "#,##0';
-            // JML HK (10 shifted from 9): angka biasa (TANPA Rp)
-            const addrJmlHK = XLSX.utils.encode_cell({ r, c: 10 });
+            // JML HK (11): angka biasa (TANPA Rp)
+            const addrJmlHK = XLSX.utils.encode_cell({ r, c: 11 });
             if (wsDT[addrJmlHK] && wsDT[addrJmlHK].t === 'n') wsDT[addrJmlHK].z = '#,##0';
-            // HASIL/HK (11 shifted from 10): Rupiah
-            const addrHasil = XLSX.utils.encode_cell({ r, c: 11 });
+            // HASIL/HK (12): Rupiah
+            const addrHasil = XLSX.utils.encode_cell({ r, c: 12 });
             if (wsDT[addrHasil] && wsDT[addrHasil].t === 'n') wsDT[addrHasil].z = '"Rp "#,##0';
 
-            // BRONDOLAN (8): Background Merah
-            const addrBron = XLSX.utils.encode_cell({ r, c: 8 });
+            // BRONDOLAN (9): Background Merah
+            const addrBron = XLSX.utils.encode_cell({ r, c: 9 });
             if (wsDT[addrBron] && wsDT[addrBron].t === 'n') {
                 wsDT[addrBron].s = {
                     fill: { fgColor: { rgb: "FFFF0000" } }, // Red background
@@ -3199,11 +3319,13 @@ function exportToExcel(periodIndex = 0) {
             { wch: 14 }, // D: ID
             { wch: 24 }, // E: NAMA
             { wch: 20 }, // F: TONASE LOADING TOTAL
-            { wch: 12 }, // G: POTONGAN
+            { wch: 14 }, // G: POTONGAN
             { wch: 14 }, // H: TON BERSIH
-            { wch: 16 }, // I: PREMI/TON
-            { wch: 10 }, // J: JML HK
-            { wch: 16 }, // K: HASIL/HK
+            { wch: 14 }, // I: ton per/hk
+            { wch: 18 }, // J: BRONDOLAN
+            { wch: 16 }, // K: PREMI/TON
+            { wch: 10 }, // L: JML HK
+            { wch: 18 }  // M: HASIL/HK
         ];
 
         // Highlight sel nama driver kontraktor dengan warna kuning
@@ -3369,9 +3491,9 @@ function exportToExcel(periodIndex = 0) {
             : (state.rates.brondolan.kg || 250);
 
         // ── BARIS HEADER ──
-        // Kolom: WAKTU | DICATAT OLEH | NO | ID | NAMA | HASIL KG | (empty) | RP 250/Kg | (empty) | JUMLAH PEDAPATAN
+        // Kolom: WAKTU | DICATAT OLEH | NO | ID | NAMA | HASIL KG | jumlah karung | RP 250/Kg | (empty) | JUMLAH PEDAPATAN
         const headerKolom = `RP ${Number(tarifKg).toLocaleString('id-ID')}/Kg`;
-        brAOA.push(['WAKTU', 'DICATAT OLEH', 'NO', 'ID', 'NAMA', 'HASIL KG', '', headerKolom, '', 'JUMLAH PEDAPATAN']);
+        brAOA.push(['WAKTU', 'DICATAT OLEH', 'NO', 'ID', 'NAMA', 'HASIL KG', 'jumlah karung', headerKolom, '', 'JUMLAH PEDAPATAN']);
 
         // ── BARIS DATA ──
         brRecords.forEach(rec => {
@@ -3381,6 +3503,7 @@ function exportToExcel(periodIndex = 0) {
 
             rec.loaders.forEach((loader, idx) => {
                 const jmlKg = loader.kg || 0;
+                const jmlKarung = jmlKg > 0 ? (jmlKg / 30) : 0;
                 const jumlahPremi = loader.amount || Math.round(jmlKg * rateKg);
 
                 brAOA.push([
@@ -3390,7 +3513,7 @@ function exportToExcel(periodIndex = 0) {
                     loader.nik,                      // D: ID
                     loader.name,                     // E: NAMA
                     jmlKg,                           // F: HASIL KG
-                    '',                              // G: (empty)
+                    jmlKarung,                       // G: jumlah karung
                     rateKg,                          // H: RP 250/Kg
                     '',                              // I: (empty)
                     jumlahPremi                      // J: JUMLAH PEDAPATAN
@@ -3421,6 +3544,11 @@ function exportToExcel(periodIndex = 0) {
             if (wsBR[addrF] && wsBR[addrF].t === 'n') {
                 wsBR[addrF].z = '#,##0';
             }
+            // Kolom G (index 6): jumlah karung
+            const addrG = XLSX.utils.encode_cell({ r, c: 6 });
+            if (wsBR[addrG] && wsBR[addrG].t === 'n') {
+                wsBR[addrG].z = '#,##0.##'; // Maksimal 2 angka desimal
+            }
             // Kolom H (index 7): RP 250/Kg
             const addrH = XLSX.utils.encode_cell({ r, c: 7 });
             if (wsBR[addrH] && wsBR[addrH].t === 'n') {
@@ -3441,7 +3569,7 @@ function exportToExcel(periodIndex = 0) {
             { wch: 8 }, // D: ID
             { wch: 22 }, // E: NAMA
             { wch: 10 }, // F: HASIL KG
-            { wch: 3 }, // G: (empty)
+            { wch: 14 }, // G: jumlah karung
             { wch: 18 }, // H: RP 250/Kg
             { wch: 3 }, // I: (empty)
             { wch: 20 }, // J: JUMLAH PEDAPATAN
