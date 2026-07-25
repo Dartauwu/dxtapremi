@@ -4146,7 +4146,8 @@ async function fetchOnlineRecords() {
     });
     if (!response.ok) throw new Error("Gagal mengambil data dari Supabase");
     const data = await response.json();
-    return data.map(item => ({
+    const nonBuahData = data.filter(item => item.category !== 'buah-manual');
+    return nonBuahData.map(item => ({
         id: item.id,
         date: item.date,
         category: item.category,
@@ -4783,7 +4784,7 @@ async function loadBuahRecords(forceOnline = false) {
     if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL') return;
     try {
         const headers = await getSupabaseHeaders();
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records?select=*&order=date.desc,id.desc`, { headers });
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?category=eq.buah-manual&select=*&order=date.desc,id.desc`, { headers });
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
@@ -4793,11 +4794,11 @@ async function loadBuahRecords(forceOnline = false) {
                     id: r.id,
                     date: r.date,
                     division: r.division,
-                    field: r.field || '',
-                    bjr: r.bjr || 0,
-                    rate: r.rate || 33000,
-                    workers: r.workers,
-                    totalTandan: r.total_tandan,
+                    field: r.vehicle || '',
+                    bjr: (r.rates && r.rates.bjr) ? r.rates.bjr : 0,
+                    rate: (r.rates && r.rates.rate) ? r.rates.rate : 33000,
+                    workers: r.loaders || [],
+                    totalTandan: r.tonnage || 0,
                     totalPremi: r.total_premi || 0,
                     createdBy: r.created_by || 'Public'
                 })), ...localOnly];
@@ -4818,20 +4819,22 @@ async function insertBuahRecordOnline(rec) {
         const payload = {
             id: rec.id,
             date: rec.date,
+            category: 'buah-manual',
             division: rec.division,
-            field: rec.field || '',
-            bjr: rec.bjr || 0,
-            rate: rec.rate || 33000,
-            workers: rec.workers,
-            total_tandan: rec.totalTandan,
+            vehicle: rec.field || '-',
+            car_type: '-',
+            tonnage: rec.totalTandan,
+            rates: { bjr: rec.bjr || 0, rate: rec.rate || 33000 },
+            drivers: [],
+            loaders: rec.workers,
             total_premi: rec.totalPremi || 0,
             created_by: rec.createdBy || 'Public'
         };
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records`, {
             method: 'POST',
             headers: await getSupabaseHeaders({
                 'Content-Type': 'application/json',
-                'Prefer': 'resolution=merge-duplicates'
+                'Prefer': 'return=minimal'
             }),
             body: JSON.stringify(payload)
         });
@@ -4844,7 +4847,7 @@ async function insertBuahRecordOnline(rec) {
 async function deleteBuahRecordOnline(id) {
     if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_PROJECT_URL') return;
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_buah_records?id=eq.${encodeURIComponent(id)}`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?id=eq.${encodeURIComponent(id)}`, {
             method: 'DELETE',
             headers: await getSupabaseHeaders()
         });
