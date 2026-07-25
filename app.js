@@ -4604,6 +4604,15 @@ function initCekPenghasilan() {
             });
         });
 
+        // Dari data Buah Manual
+        state.buahRecords.forEach(rec => {
+            if (Array.isArray(rec.workers)) {
+                rec.workers.forEach(w => {
+                    if (w.name) allNamesMap.set(w.name.toUpperCase(), w.nik || '-');
+                });
+            }
+        });
+
         const combinedList = Array.from(allNamesMap, ([name, nik]) => ({ name, nik }));
         // Filter autocomplete: cocokkan kata utuh, bukan substring
         // "HARDI" tidak menyarankan "DWI HARDIANTO"
@@ -4712,6 +4721,28 @@ function initCekPenghasilan() {
                             date: rec.date,
                             job: `${jobLabel} (${peran})`,
                             amount: loader.amount
+                        });
+                    }
+                });
+            }
+        });
+
+        // Search in buahRecords (Pengeluaran Buah Manual)
+        state.buahRecords.forEach(rec => {
+            const dateParts = rec.date.split('-');
+            const recDateObj = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+            
+            const include = recDateObj >= periodStart && recDateObj <= periodEnd;
+
+            if (include && Array.isArray(rec.workers)) {
+                rec.workers.forEach(worker => {
+                    if (worker.name && worker.name.toLowerCase().includes(query)) {
+                        const workerPremi = worker.premi || worker.amount || 0;
+                        total += workerPremi;
+                        findings.push({
+                            date: rec.date,
+                            job: `Buah Manual (Pengeluar)`,
+                            amount: workerPremi
                         });
                     }
                 });
@@ -5718,6 +5749,16 @@ function initAiAssistant() {
                     out.push({ date: rec.date, job, amount: l.amount || 0 });
                 }
             });
+        });
+        // Buah Manual records
+        state.buahRecords.forEach(rec => {
+            if (Array.isArray(rec.workers)) {
+                rec.workers.forEach(w => {
+                    if (w.name && w.name.toLowerCase() === nl) {
+                        out.push({ date: rec.date, job: 'Buah Manual (Pengeluar)', amount: w.premi || w.amount || 0 });
+                    }
+                });
+            }
         });
         return out.sort((a, b) => b.date.localeCompare(a.date));
     }
