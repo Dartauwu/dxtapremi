@@ -147,12 +147,6 @@ function formatPeriodLabel(index) {
     const { start, end } = getPeriodDates(index);
     const opts = { day: 'numeric', month: 'short', year: 'numeric' };
     const startStr = start.toLocaleDateString('id-ID', opts);
-    // Untuk periode saat ini (index 0), tampilkan tanggal hari ini sebagai akhir
-    if (index === 0) {
-        const today = new Date();
-        const endStr = today.toLocaleDateString('id-ID', opts);
-        return `${startStr} – ${endStr}`;
-    }
     return `${startStr} – ${end.toLocaleDateString('id-ID', opts)}`;
 }
 
