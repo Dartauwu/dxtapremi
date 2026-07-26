@@ -4694,7 +4694,7 @@ function initCekPenghasilan() {
             if (include) {
                 // Check drivers
                 rec.drivers.forEach(driver => {
-                    if (driver.name.toLowerCase().includes(query)) {
+                    if (driver.name.toLowerCase() === query) {
                         total += driver.amount;
                         let peran = rec.category === 'tractor' ? 'Operator' : 'Supir';
                         let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
@@ -4707,7 +4707,7 @@ function initCekPenghasilan() {
                 });
                 // Check loaders
                 rec.loaders.forEach(loader => {
-                    if (loader.name.toLowerCase().includes(query)) {
+                    if (loader.name.toLowerCase() === query) {
                         total += loader.amount;
                         let peran = rec.category === 'brondolan' ? 'Pengumpul' : 'Pemuat';
                         let jobLabel = rec.category === 'dump-truck' ? 'Dump Truck' : (rec.category === 'tractor' ? 'Traktor' : 'Brondolan');
@@ -4730,7 +4730,7 @@ function initCekPenghasilan() {
 
             if (include && Array.isArray(rec.workers)) {
                 rec.workers.forEach(worker => {
-                    if (worker.name && worker.name.toLowerCase().includes(query)) {
+                    if (worker.name && worker.name.toLowerCase() === query) {
                         const workerPremi = worker.premi || worker.amount || 0;
                         total += workerPremi;
                         findings.push({

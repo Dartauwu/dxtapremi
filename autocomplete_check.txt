@@ -1,0 +1,41 @@
+﻿}
+
+// Cek Penghasilan Modal Logic
+function initCekPenghasilan() {
+    const btnOpen = document.getElementById('btn-cek-penghasilan');
+    const btnClose = document.getElementById('btn-close-cek-modal');
+    const modal = document.getElementById('modal-cek-penghasilan');
+    const btnCari = document.getElementById('btn-cek-cari');
+    const inputNama = document.getElementById('input-cek-nama');
+    const resultContainer = document.getElementById('cek-result-container');
+    const totalAmount = document.getElementById('cek-total-amount');
+    const historyBody = document.getElementById('cek-history-body');
+    const emptyState = document.getElementById('cek-empty-state');
+    const dropdown = document.getElementById('cek-nama-dropdown');
+
+    if (!btnOpen || !modal) return;
+
+    // Autocomplete Logic
+    inputNama.addEventListener('input', (e) => {
+        const value = e.target.value.trim().toUpperCase();
+        if (!value) {
+            if (dropdown) {
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+            }
+            return;
+        }
+
+        // Kumpulkan semua nama dari EMPLOYEE_DB dan riwayat catatan (records)
+        const allNamesMap = new Map();
+        
+        // Dari EMPLOYEE_DB
+        EMPLOYEE_DB.forEach(emp => {
+            allNamesMap.set(emp.name.toUpperCase(), emp.nik);
+        });
+        
+        // Dari data riwayat yang sudah dicatat
+        state.records.forEach(rec => {
+            rec.drivers.forEach(d => {
+                if (d.name) allNamesMap.set(d.name.toUpperCase(), d.nik || '-');
+            });
