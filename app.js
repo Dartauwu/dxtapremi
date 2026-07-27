@@ -844,9 +844,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind refresh button
     const btnRefresh = document.getElementById('btn-refresh-data');
     if (btnRefresh) {
-        btnRefresh.addEventListener('click', () => {
-            loadRecords(true);
-            loadBuahRecords(true);
+        btnRefresh.addEventListener('click', async () => {
+            await loadRecords(true);
+            await loadBuahRecords(true);
+            if (currentUser === 'OWNER') populateCreatedByDropdowns();
         });
     }
 
@@ -1426,7 +1427,7 @@ function addLoaderRow() {
             <div class="form-group" style="min-width:90px; flex:0 0 auto;">
                 <label>Karung</label>
                 <div class="input-with-suffix">
-                    <input type="number" class="loader-karung" min="0" placeholder="0" step="1" style="width:100%;">
+                    <input type="number" class="loader-karung" min="0" placeholder="0" step="any" style="width:100%;">
                     <span class="input-suffix">krg</span>
                 </div>
             </div>
@@ -1858,7 +1859,9 @@ function calculateCurrentPremi() {
         loaders: loadersList,
         totalPremi: totalPremiGrup,
         brondolanSentKg: brondolanSentKg,
-        createdBy: currentUser || 'Public'
+        createdBy: (currentUser === 'OWNER' && document.getElementById('input-created-by') && document.getElementById('input-created-by').value)
+            ? document.getElementById('input-created-by').value
+            : (currentUser || 'Public')
     };
 }
 
@@ -1891,6 +1894,8 @@ function initFormSubmit() {
             result.id = oldId; // Keep the same ID
             const idx = state.records.findIndex(r => r.id === oldId);
             if (idx > -1) {
+                // Preserve original creator — OWNER editing should NOT change createdBy
+                result.createdBy = state.records[idx].createdBy;
                 state.records[idx] = result;
             }
             state.editingRecordId = null;
@@ -4041,6 +4046,55 @@ function initAuth() {
     updateAuthUI();
 }
 
+// Populate "Dicatat Oleh" dropdown for OWNER — collects all known usernames
+function populateCreatedByDropdowns() {
+    const userSet = new Set();
+    
+    // Always include these known accounts
+    const KNOWN_ACCOUNTS = ['DARTA', 'IRWAN', 'MATIUS', 'OWNER'];
+    KNOWN_ACCOUNTS.forEach(acc => userSet.add(acc));
+
+    // Collect from all existing records
+    state.records.forEach(r => { if (r.createdBy) userSet.add(r.createdBy); });
+    state.buahRecords.forEach(r => { if (r.createdBy) userSet.add(r.createdBy); });
+    
+    // Always include current user
+    if (currentUser) userSet.add(currentUser);
+    
+    // Remove 'Public' — it's the default fallback, not a real user
+    userSet.delete('Public');
+
+    const sortedUsers = [...userSet].sort();
+
+    // Populate main form dropdown
+    const selectMain = document.getElementById('input-created-by');
+    if (selectMain) {
+        const prevVal = selectMain.value;
+        selectMain.innerHTML = '<option value="">— Pilih Pencatat —</option>';
+        sortedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            selectMain.appendChild(opt);
+        });
+        if (prevVal && sortedUsers.includes(prevVal)) selectMain.value = prevVal;
+    }
+
+    // Populate buah manual form dropdown
+    const selectBuah = document.getElementById('buah-input-created-by');
+    if (selectBuah) {
+        const prevVal = selectBuah.value;
+        selectBuah.innerHTML = '<option value="">— Pilih Pencatat —</option>';
+        sortedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            selectBuah.appendChild(opt);
+        });
+        if (prevVal && sortedUsers.includes(prevVal)) selectBuah.value = prevVal;
+    }
+}
+
 function updateAuthUI() {
     const btnLoginLogout = document.getElementById('btn-login-logout');
     const btnAddEmployee = document.getElementById('btn-add-employee-modal');
@@ -4069,6 +4123,18 @@ function updateAuthUI() {
             btnBannerControls.classList.remove('hidden');
         } else if (btnBannerControls) {
             btnBannerControls.classList.add('hidden');
+        }
+
+        // Show "Dicatat Oleh" override for OWNER
+        const groupCreatedBy = document.getElementById('group-created-by-override');
+        const groupBuahCreatedBy = document.getElementById('group-buah-created-by-override');
+        if (currentUser === 'OWNER') {
+            if (groupCreatedBy) groupCreatedBy.classList.remove('hidden');
+            if (groupBuahCreatedBy) groupBuahCreatedBy.classList.remove('hidden');
+            populateCreatedByDropdowns();
+        } else {
+            if (groupCreatedBy) groupCreatedBy.classList.add('hidden');
+            if (groupBuahCreatedBy) groupBuahCreatedBy.classList.add('hidden');
         }
 
         // Show navigation menu if we aren't in form section
@@ -4800,7 +4866,7 @@ function loadBuahRecordsLocal() {
     }
 }
 
-// Load buah records: local first, then Supabase
+// Load buah records: local first, then Supabase (with re-sync for local-only records)
 async function loadBuahRecords(forceOnline = false) {
     loadBuahRecordsLocal();
     updateBuahCardStats();
@@ -4812,25 +4878,43 @@ async function loadBuahRecords(forceOnline = false) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/dxtapremi_records?category=eq.buah-manual&select=*&order=date.desc,id.desc`, { headers });
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-                const onlineIds = new Set(data.map(r => r.id));
-                const localOnly = state.buahRecords.filter(r => !onlineIds.has(r.id));
-                const merged = [...data.map(r => ({
-                    id: r.id,
-                    date: r.date,
-                    division: r.division,
-                    field: r.vehicle || '',
-                    bjr: (r.rates && r.rates.bjr) ? r.rates.bjr : 0,
-                    rate: (r.rates && r.rates.rate) ? r.rates.rate : 33000,
-                    workers: r.loaders || [],
-                    totalTandan: r.tonnage || 0,
-                    totalPremi: r.total_premi || 0,
-                    createdBy: r.created_by || 'Public'
-                })), ...localOnly];
-                state.buahRecords = merged;
-                saveBuahRecordsLocal();
-                updateBuahCardStats();
-                if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+            const onlineRecords = Array.isArray(data) ? data : [];
+            const onlineIds = new Set(onlineRecords.map(r => r.id));
+
+            // Find local records that are NOT on Supabase yet
+            const localOnly = state.buahRecords.filter(r => !onlineIds.has(r.id));
+
+            // Convert online records to local format
+            const onlineMapped = onlineRecords.map(r => ({
+                id: r.id,
+                date: r.date,
+                division: r.division,
+                field: r.vehicle || '',
+                bjr: (r.rates && r.rates.bjr) ? r.rates.bjr : 0,
+                rate: (r.rates && r.rates.rate) ? r.rates.rate : 33000,
+                workers: r.loaders || [],
+                totalTandan: r.tonnage || 0,
+                totalPremi: r.total_premi || 0,
+                createdBy: r.created_by || 'Public'
+            }));
+
+            // Merge: online records + local-only records (never lose local data)
+            const merged = [...onlineMapped, ...localOnly];
+            state.buahRecords = merged;
+            saveBuahRecordsLocal();
+            updateBuahCardStats();
+            if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+
+            // Re-sync local-only records to Supabase (they were never uploaded or failed before)
+            if (localOnly.length > 0) {
+                console.log(`Re-syncing ${localOnly.length} local-only buah record(s) to Supabase...`);
+                for (const rec of localOnly) {
+                    try {
+                        await insertBuahRecordOnline(rec);
+                    } catch (syncErr) {
+                        console.warn('Gagal re-sync buah record:', rec.id, syncErr);
+                    }
+                }
             }
         }
     } catch (err) {
@@ -5434,7 +5518,9 @@ function initBuahManual() {
             workers,
             totalTandan,
             totalPremi,
-            createdBy: currentUser || 'Public'
+            createdBy: (currentUser === 'OWNER' && document.getElementById('buah-input-created-by') && document.getElementById('buah-input-created-by').value)
+                ? document.getElementById('buah-input-created-by').value
+                : (currentUser || 'Public')
         };
 
         state.buahRecords.push(rec);
@@ -5445,13 +5531,20 @@ function initBuahManual() {
         closeModal();
         showToast(`Catatan buah disimpan — ${totalTandan} Tandan | Premi: ${formatRupiah(totalPremi)}`);
 
-        // Sync to Supabase
+        // Sync to Supabase (with retry)
         if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
-            try {
-                await insertBuahRecordOnline(rec);
-            } catch (err) {
-                console.error(err);
-                showToast('Tersimpan offline, gagal sinkron online.', true);
+            let synced = false;
+            for (let attempt = 0; attempt < 2 && !synced; attempt++) {
+                try {
+                    await insertBuahRecordOnline(rec);
+                    synced = true;
+                } catch (err) {
+                    console.error(`Gagal sync buah ke Supabase (percobaan ${attempt + 1}):`, err);
+                    if (attempt === 0) await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+                }
+            }
+            if (!synced) {
+                showToast('⚠️ Tersimpan offline saja. Data akan otomatis di-sync saat koneksi kembali.', true);
             }
         }
     });
