@@ -1491,6 +1491,40 @@ input[readonly] {
     font-family: monospace;
 }
 
+/* Tonase per orang badge - eye-catching */
+.tonase-per-orang {
+    display: inline-block;
+    margin-top: 3px;
+    margin-left: 0;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-family: 'Courier New', 'Consolas', monospace;
+    letter-spacing: 0.5px;
+    color: #fff;
+    background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+    border-radius: 4px;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Karung per orang badge - eye-catching orange */
+.karung-per-orang {
+    display: inline-block;
+    margin-top: 3px;
+    margin-left: 0;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-family: 'Courier New', 'Consolas', monospace;
+    letter-spacing: 0.5px;
+    color: #fff;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    border-radius: 4px;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
 .cat-badge {
     font-size: 0.72rem;
     font-weight: 700;

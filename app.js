@@ -82,6 +82,7 @@ const state = {
     records: [],
     buahRecords: [],    // Pengeluaran Buah Manual records
     editingRecordId: null, // ID record yang sedang diedit (null = mode baru)
+    editingBuahRecordId: null, // ID record buah manual yang sedang diedit
     rates: {
         'dump-truck': {
             driver: 17000,   // Rp per Ton (Supir Dump Truck)
@@ -2135,6 +2136,7 @@ function renderHistoryTable() {
             (rec.workers || []).forEach(w => {
                 const tandan = w.tandan || 0;
                 const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+                const workerTon = (tandan * bjr / 1000).toFixed(3);
                 workersCellHTML += `
                     <div class="wb-item">
                         <span class="wb-role" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">PEKRJ</span>
@@ -2142,6 +2144,7 @@ function renderHistoryTable() {
                         <span class="wb-nik" style="color:var(--accent-purple);">${w.nik || '-'}</span>
                         <strong style="color:#a78bfa;margin-left:0.25rem;">(${tandan.toLocaleString('id-ID')} Tdn)</strong>
                         <strong style="color:var(--accent-gold);margin-left:0.25rem;">${formatRupiah(premi)}</strong>
+                        <div class="tonase-per-orang">⚖ ${workerTon} Ton</div>
                     </div>
                 `;
             });
@@ -2165,6 +2168,9 @@ function renderHistoryTable() {
                 actionCellHTML = `
                     <td data-label="Aksi">
                         <div class="action-btn-group">
+                            <button type="button" class="btn-edit-buah-row" title="Edit catatan ini">
+                                <i data-lucide="pencil"></i>
+                            </button>
                             <button type="button" class="btn-delete-row" title="Hapus catatan ini">
                                 <i data-lucide="trash-2"></i>
                             </button>
@@ -2190,6 +2196,10 @@ function renderHistoryTable() {
             `;
 
             if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+                const btnEditBuah = tr.querySelector('.btn-edit-buah-row');
+                if (btnEditBuah) {
+                    btnEditBuah.addEventListener('click', () => editBuahRecord(rec.id));
+                }
                 const btnDel = tr.querySelector('.btn-delete-row');
                 if (btnDel) {
                     btnDel.addEventListener('click', async () => {
@@ -2235,12 +2245,21 @@ function renderHistoryTable() {
         // Output all drivers
         rec.drivers.forEach(driver => {
             const roleLabel = rec.category === 'tractor' ? 'OPER' : 'SUPIR';
+            let driverTon = 0;
+            if (rec.category === 'dump-truck' || rec.category === 'tractor') {
+                const totalDriverTon = rec.tonnage || 0;
+                const potonganDriver = rec.potonganHK || 0;
+                const effDriverTon = Math.max(0, totalDriverTon - potonganDriver);
+                driverTon = (rec.drivers.length > 0) ? (effDriverTon / rec.drivers.length) : 0;
+            }
+            const tonaseBadge = driverTon > 0 ? `<div class="tonase-per-orang">⚖ ${driverTon.toFixed(3)} Ton</div>` : '';
             const moneyInfo = ` <strong style="color:var(--primary-light); margin-left: 0.25rem;">(${formatRupiah(driver.amount)})</strong>`;
             workersCellHTML += `
                 <div class="wb-item">
                     <span class="wb-role driver">${roleLabel}</span>
                     <span class="wb-name">${driver.name}</span>
                     <span class="wb-nik">${driver.nik}</span>${moneyInfo}
+                    ${tonaseBadge}
                 </div>
             `;
         });
@@ -2249,9 +2268,22 @@ function renderHistoryTable() {
         rec.loaders.forEach(loader => {
             const roleLabel = rec.category === 'brondolan' ? 'KTK' : 'PEMT';
             let extraInfo = '';
+            let tonaseBadge = '';
             if (rec.category === 'brondolan') {
+                const karung = loader.kg > 0 ? (loader.kg / 30) : 0;
+                const karungStr = karung % 1 === 0 ? karung.toFixed(0) : karung.toFixed(1);
                 extraInfo = ` <strong style="color:var(--accent-gold); margin-left: 0.25rem;">(${loader.kg} Kg)</strong>`;
+                tonaseBadge = `<div class="karung-per-orang">🧺 ${karungStr} Karung</div>`;
             } else {
+                let perPersonTon = 0;
+                if (rec.category === 'dump-truck') {
+                    const effPemuatTon = Math.max(0, (rec.tonnagePemuat || 0) - (rec.potonganPemuat || 0));
+                    perPersonTon = (rec.loaders.length > 0) ? (effPemuatTon / rec.loaders.length) : 0;
+                } else if (rec.category === 'tractor') {
+                    const effPemuatTon = Math.max(0, (rec.tonnage || 0) - (rec.potonganHK || 0));
+                    perPersonTon = (rec.loaders.length > 0) ? (effPemuatTon / rec.loaders.length) : 0;
+                }
+                tonaseBadge = perPersonTon > 0 ? `<div class="tonase-per-orang">⚖ ${perPersonTon.toFixed(3)} Ton</div>` : '';
                 extraInfo = ` <strong style="color:var(--primary-light); margin-left: 0.25rem;">(${formatRupiah(loader.amount)})</strong>`;
             }
             workersCellHTML += `
@@ -2259,6 +2291,7 @@ function renderHistoryTable() {
                     <span class="wb-role loader">${roleLabel}</span>
                     <span class="wb-name">${loader.name}</span>
                     <span class="wb-nik">${loader.nik}</span>${extraInfo}
+                    ${tonaseBadge}
                 </div>
             `;
         });
@@ -5037,6 +5070,7 @@ function renderBuahHistoryTable() {
         (rec.workers || []).forEach(w => {
             const tandan = w.tandan || 0;
             const premi = w.premi !== undefined ? w.premi : calcBuahPremi(tandan, bjr, rate);
+            const workerTon = (tandan * bjr / 1000).toFixed(3);
             workersCellHTML += `
                 <div class="wb-item">
                     <span class="wb-role" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">PEKRJ</span>
@@ -5044,6 +5078,7 @@ function renderBuahHistoryTable() {
                     <span class="wb-nik" style="color:var(--accent-purple);">${w.nik || '-'}</span>
                     <strong style="color:#a78bfa;margin-left:0.25rem;">(${tandan.toLocaleString('id-ID')} Tdn)</strong>
                     <strong style="color:var(--accent-gold);margin-left:0.25rem;">${formatRupiah(premi)}</strong>
+                    <div class="tonase-per-orang">⚖ ${workerTon} Ton</div>
                 </div>
             `;
         });
@@ -5069,6 +5104,9 @@ function renderBuahHistoryTable() {
             actionCellHTML = `
                 <td data-label="Aksi">
                     <div class="action-btn-group">
+                        <button type="button" class="btn-edit-buah-row" title="Edit catatan ini">
+                            <i data-lucide="pencil"></i>
+                        </button>
                         <button type="button" class="btn-delete-row" title="Hapus catatan ini">
                             <i data-lucide="trash-2"></i>
                         </button>
@@ -5095,6 +5133,10 @@ function renderBuahHistoryTable() {
 
         // Bind delete
         if (currentUser && (rec.createdBy === currentUser || currentUser === 'OWNER')) {
+            const btnEditBuah2 = tr.querySelector('.btn-edit-buah-row');
+            if (btnEditBuah2) {
+                btnEditBuah2.addEventListener('click', () => editBuahRecord(rec.id));
+            }
             const btnDel = tr.querySelector('.btn-delete-row');
             if (btnDel) {
                 btnDel.addEventListener('click', async () => {
@@ -5294,6 +5336,72 @@ function resetBuahCalcState() {
     document.querySelectorAll('.buah-row-premi').forEach(el => { el.textContent = '—'; });
 }
 
+// Edit Buah Manual record — open modal with existing data
+function editBuahRecord(id) {
+    const rec = state.buahRecords.find(r => r.id === id);
+    if (!rec) { showToast('Record tidak ditemukan.', true); return; }
+
+    state.editingBuahRecordId = id;
+
+    const modal = document.getElementById('modal-buah-manual');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    // Populate form fields
+    document.getElementById('buah-input-tanggal').value = rec.date || getLocalToday();
+    document.getElementById('buah-input-divisi').value = rec.division || '';
+
+    const fieldSelect = document.getElementById('buah-input-field');
+    if (fieldSelect) {
+        fieldSelect.value = rec.field || '';
+        // Trigger change to update BJR display
+        const selected = fieldSelect.options[fieldSelect.selectedIndex];
+        const bjrFromField = parseFloat(selected ? selected.dataset.bjr : 0) || 0;
+        const bjrD = document.getElementById('buah-display-bjr');
+        if (bjrD) bjrD.value = rec.bjr || bjrFromField || '';
+    }
+
+    const rateI = document.getElementById('buah-input-rate');
+    if (rateI) rateI.value = rec.rate || 33000;
+
+    // Clear existing workers
+    const container = document.getElementById('buah-workers-container');
+    if (container) container.innerHTML = '';
+
+    // Populate workers
+    (rec.workers || []).forEach(w => {
+        addBuahWorkerRow();
+        const rows = container.querySelectorAll('.buah-worker-row');
+        const lastRow = rows[rows.length - 1];
+
+        const nameInput = lastRow.querySelector('.buah-worker-name-input');
+        const nikHidden = lastRow.querySelector('.buah-worker-nik-val');
+        const badge = lastRow.querySelector('.buah-badge');
+        const tandanInput = lastRow.querySelector('.buah-worker-tandan');
+
+        if (nameInput) { nameInput.value = w.name; nameInput.disabled = true; }
+        if (nikHidden) nikHidden.value = w.nik;
+        if (badge) {
+            badge.querySelector('.badge-nik').textContent = w.nik;
+            badge.classList.remove('hidden');
+        }
+        if (tandanInput) tandanInput.value = w.tandan || 0;
+    });
+
+    // If no workers, add one empty row
+    if ((rec.workers || []).length === 0) addBuahWorkerRow();
+
+    resetBuahCalcState();
+    updateBuahTotal();
+    if (window.lucide) lucide.createIcons();
+
+    // Update modal title to indicate editing
+    const modalTitle = modal.querySelector('.modal-header h2, .modal-title');
+    if (modalTitle) modalTitle.textContent = '✏️ Edit Pengeluaran Buah Manual';
+
+    showToast('Mode edit — ubah data lalu Hitung Premi dan Simpan.');
+}
+
 // Initialize Buah Manual feature
 function initBuahManual() {
     const cardBuah = document.getElementById('card-buah-manual');
@@ -5429,7 +5537,11 @@ function initBuahManual() {
             showToast('Silakan masuk terlebih dahulu untuk mencatat data.', true);
             return;
         }
+        state.editingBuahRecordId = null; // Reset edit mode
         modal.classList.remove('hidden');
+        // Reset modal title
+        const modalTitle = modal.querySelector('.modal-header h2, .modal-title');
+        if (modalTitle) modalTitle.textContent = 'Pengeluaran Buah Manual';
         // Reset form
         document.getElementById('buah-input-tanggal').value = getLocalToday();
         document.getElementById('buah-input-divisi').value = '';
@@ -5449,7 +5561,13 @@ function initBuahManual() {
         if (window.lucide) lucide.createIcons();
     };
 
-    const closeModal = () => { modal.classList.add('hidden'); };
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        state.editingBuahRecordId = null;
+        // Reset modal title
+        const modalTitle = modal.querySelector('.modal-header h2, .modal-title');
+        if (modalTitle) modalTitle.textContent = 'Pengeluaran Buah Manual';
+    };
 
     cardBuah.addEventListener('click', openModal);
     btnClose.addEventListener('click', closeModal);
@@ -5508,6 +5626,41 @@ function initBuahManual() {
         const totalTandan = workers.reduce((acc, w) => acc + w.tandan, 0);
         const totalPremi = workers.reduce((acc, w) => acc + w.premi, 0);
 
+        // Check if editing existing record
+        if (state.editingBuahRecordId) {
+            const existingIdx = state.buahRecords.findIndex(r => r.id === state.editingBuahRecordId);
+            if (existingIdx > -1) {
+                const existingRec = state.buahRecords[existingIdx];
+                existingRec.date = date;
+                existingRec.division = division;
+                existingRec.field = fieldVal;
+                existingRec.bjr = bjrVal;
+                existingRec.rate = rateVal;
+                existingRec.workers = workers;
+                existingRec.totalTandan = totalTandan;
+                existingRec.totalPremi = totalPremi;
+
+                saveBuahRecordsLocal();
+                updateBuahCardStats();
+                renderHistoryTable();
+
+                closeModal();
+                showToast(`Catatan buah diperbarui — ${totalTandan} Tandan | Premi: ${formatRupiah(totalPremi)}`);
+
+                // Sync update to Supabase (delete old, insert updated)
+                if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') {
+                    try {
+                        await deleteBuahRecordOnline(existingRec.id);
+                        await insertBuahRecordOnline(existingRec);
+                    } catch (err) {
+                        console.error('Gagal sync update buah ke Supabase:', err);
+                    }
+                }
+                return;
+            }
+        }
+
+        // Create new record
         const rec = {
             id: 'buah_' + Date.now(),
             date,
@@ -5527,6 +5680,7 @@ function initBuahManual() {
         saveBuahRecordsLocal();
         updateBuahCardStats();
         if (state.activeTab === 'tab-buah-manual') renderBuahHistoryTable();
+        else renderHistoryTable();
 
         closeModal();
         showToast(`Catatan buah disimpan — ${totalTandan} Tandan | Premi: ${formatRupiah(totalPremi)}`);
