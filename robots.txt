@@ -1,4 +1,4 @@
 User-agent: *
-Allow: /
+Disallow: /
 
-Sitemap: https://www.dartaxpremi.my.id/sitemap.xml
+# Situs ini bersifat privat. Dilarang diindeks oleh mesin pencari.

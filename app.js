@@ -769,7 +769,261 @@ function initBannerUploader() {
 }
 
 // DOM Elements
+// ============================================================
+// AUTH GATE — Pemeriksaan Sesi & Kontrol Visibilitas Konten
+// ============================================================
+
+/**
+ * Fungsi utama yang dijalankan saat halaman pertama kali dibuka.
+ * Memeriksa apakah user sudah punya sesi Supabase aktif.
+ * - Ada sesi  → sembunyikan auth-gate, tampilkan app
+ * - Tidak ada → tampilkan auth-gate, sembunyikan app
+ */
+async function checkAuthGate() {
+    const authGate    = document.getElementById('auth-gate');
+    const appContainer = document.getElementById('app-container');
+
+    // Coba ambil sesi dari Supabase
+    let hasSession = false;
+    if (supabaseClient) {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session && session.user) {
+                hasSession = true;
+                currentSession = session;
+                currentUser = session.user.email.split('@')[0].toUpperCase();
+                localStorage.setItem('dxtapremi_user', currentUser);
+            }
+        } catch (err) {
+            console.warn('Gagal cek sesi Supabase:', err);
+        }
+    }
+
+    if (hasSession) {
+        // Sudah login — sembunyikan auth-gate, tampilkan app
+        authGate.style.display = 'none';
+        appContainer.style.display = '';
+        appContainer.classList.add('auth-app-fadein');
+        // Init semua komponen
+        initAllComponents();
+    } else {
+        // Belum login — tampilkan auth-gate
+        authGate.style.display = 'flex';
+        appContainer.style.display = 'none';
+        initAuthGateForm();
+    }
+}
+
+/**
+ * Inisialisasi form di Auth Gate (email + password + submit).
+ * Dipanggil hanya saat user belum login.
+ */
+function initAuthGateForm() {
+    const form        = document.getElementById('auth-gate-form');
+    const emailInput  = document.getElementById('auth-gate-email');
+    const passInput   = document.getElementById('auth-gate-password');
+    const togglePass  = document.getElementById('auth-gate-toggle-pass');
+    const submitBtn   = document.getElementById('auth-gate-submit');
+    const btnText     = document.getElementById('auth-gate-btn-text');
+    const spinner     = document.getElementById('auth-gate-spinner');
+    const arrow       = document.getElementById('auth-gate-arrow');
+    const errorEl     = document.getElementById('auth-gate-error');
+
+    // Toggle show/hide password
+    togglePass.addEventListener('click', () => {
+        const isPass = passInput.type === 'password';
+        passInput.type = isPass ? 'text' : 'password';
+        // Ganti ikon
+        document.getElementById('auth-gate-eye-icon').innerHTML = isPass
+            ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+            : '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+    });
+
+    // Fokus email saat gate muncul
+    setTimeout(() => emailInput.focus(), 300);
+
+    // Submit form
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email    = emailInput.value.trim();
+        const password = passInput.value.trim();
+
+        if (!email || !password) {
+            showAuthGateError(errorEl, 'Email dan password tidak boleh kosong.');
+            return;
+        }
+
+        if (!supabaseClient) {
+            showAuthGateError(errorEl, 'Koneksi ke server gagal. Periksa internet atau nonaktifkan AdBlocker, lalu muat ulang.');
+            return;
+        }
+
+        // Set loading state
+        submitBtn.disabled = true;
+        btnText.textContent = 'Memproses...';
+        spinner.classList.remove('hidden');
+        arrow.classList.add('hidden');
+        errorEl.classList.add('hidden');
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        // Reset loading state
+        submitBtn.disabled = false;
+        btnText.textContent = 'Masuk ke DxtaPremi';
+        spinner.classList.add('hidden');
+        arrow.classList.remove('hidden');
+
+        if (error) {
+            showAuthGateError(errorEl, 'Email atau password salah. Silakan coba lagi.');
+            passInput.value = '';
+            passInput.focus();
+            return;
+        }
+
+        if (data.session) {
+            // Login berhasil!
+            currentSession = data.session;
+            currentUser    = data.user.email.split('@')[0].toUpperCase();
+            localStorage.setItem('dxtapremi_user', currentUser);
+
+            // Animasi exit auth gate
+            const authGate = document.getElementById('auth-gate');
+            const appContainer = document.getElementById('app-container');
+
+            authGate.classList.add('auth-gate-exit');
+            setTimeout(() => {
+                authGate.style.display = 'none';
+                authGate.classList.remove('auth-gate-exit');
+                appContainer.style.display = '';
+                appContainer.classList.add('auth-app-fadein');
+                // Inisialisasi seluruh komponen app
+                initAllComponents();
+                showToast(`Selamat datang, ${currentUser}!`);
+            }, 450);
+        }
+    });
+}
+
+function showAuthGateError(el, msg) {
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    // Auto-hide setelah 5 detik
+    setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+/**
+ * Tampilkan kembali auth gate saat user logout.
+ * Dipanggil dari updateAuthUI() ketika currentUser menjadi null.
+ */
+function showAuthGateOnLogout() {
+    const authGate     = document.getElementById('auth-gate');
+    const appContainer = document.getElementById('app-container');
+
+    appContainer.style.display = 'none';
+    appContainer.classList.remove('auth-app-fadein');
+    authGate.style.display = 'flex';
+
+    // Reset form
+    const form = document.getElementById('auth-gate-form');
+    if (form) form.reset();
+    const errorEl = document.getElementById('auth-gate-error');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    // Fokus email
+    setTimeout(() => {
+        const emailInput = document.getElementById('auth-gate-email');
+        if (emailInput) emailInput.focus();
+    }, 100);
+}
+
+/**
+ * Inisialisasi SEMUA komponen aplikasi.
+ * Dipanggil setelah auth gate berhasil dilewati (login).
+ */
+function initAllComponents() {
+    initBannerUploader();
+
+    // Auto uppercase
+    document.addEventListener('input', (e) => {
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) {
+            if (e.target.closest('#auth-gate')) return; // skip auth gate inputs
+            const start = e.target.selectionStart;
+            const end   = e.target.selectionEnd;
+            e.target.value = e.target.value.toUpperCase();
+            if (start !== null) e.target.setSelectionRange(start, end);
+        }
+    });
+
+    loadCustomEmployees();
+    if (window.lucide) lucide.createIcons();
+
+    const dateInput = document.getElementById('input-tanggal');
+    if (dateInput) {
+        dateInput.value = getLocalToday();
+        dateInput.addEventListener('change', (e) => {
+            const dateVal = e.target.value;
+            if (!dateVal) return;
+            const parts = dateVal.split('-');
+            const selectedDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+            const isSunday = selectedDate.getDay() === 0;
+            if (isSunday) {
+                state.rates['dump-truck'].driver = 21000;
+                state.rates['dump-truck'].loader = 65000;
+            } else {
+                state.rates['dump-truck'].driver = 17000;
+                state.rates['dump-truck'].loader = 55000;
+            }
+            if (state.activeCategory === 'dump-truck') customizeFormUI('dump-truck');
+        });
+        dateInput.dispatchEvent(new Event('change'));
+    }
+
+    initTheme();
+    initNavigation();
+    initAccordion();
+    initDrivers();
+    initLoaders();
+    initLiveCalculations();
+    initFormSubmit();
+    initHistoryTabs();
+    initExcelExport();
+    initEmployeeModal();
+    initAuth();
+    initCekPenghasilan();
+    initOwnerDeleteModal();
+    initOwnerReport();
+    initBuahManual();
+    updatePeriodLabel();
+    initHeaderDropdown();
+    setTimeout(initAiAssistant, 500);
+
+    const btnRefresh = document.getElementById('btn-refresh-data');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', async () => {
+            await loadRecords(true);
+            await loadBuahRecords(true);
+            if (currentUser === 'OWNER') populateCreatedByDropdowns();
+        });
+    }
+
+    loadRecords();
+    loadBuahRecords();
+    loadEmployeesFromSupabase();
+
+    updateAuthUI();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Jalankan pemeriksaan auth gate PERTAMA sebelum apapun
+    checkAuthGate();
+});
+
+// CATATAN: Kode DOMContentLoaded lama dipindah ke initAllComponents() di atas.
+// Baris berikut adalah sisa kode lama yang tidak lagi dipanggil dari DOMContentLoaded.
+// Tetap ada agar fungsi-fungsi di bawah masih terdefinisi.
+
+function _LEGACY_DOMContentLoaded_DISABLED() {
+
     initBannerUploader();
     setTimeout(initAiAssistant, 500);
 
@@ -858,9 +1112,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sync employees from Supabase online database
     loadEmployeesFromSupabase();
-});
+} // end _LEGACY_DOMContentLoaded_DISABLED
 
-// Theme Management
+
 function initTheme() {
     const btnToggle = document.getElementById('btn-theme-toggle');
     const localTheme = localStorage.getItem('theme') || 'dark';
@@ -4210,6 +4464,9 @@ function updateAuthUI() {
             const footer = card.querySelector('.card-footer');
             if (footer) footer.style.display = 'none';
         });
+
+        // Tampilkan kembali layar login wajib saat logout
+        showAuthGateOnLogout();
     }
 
     if (window.lucide) lucide.createIcons();

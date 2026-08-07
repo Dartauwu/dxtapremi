@@ -10,6 +10,9 @@
     <meta name="keywords"
         content="dartaxpremi, dxtapremi, pencatatan premi, premi sawit, aplikasi premi pekerja, kelapa sawit">
     <meta name="author" content="DxtaPremi">
+    <!-- Private: Sembunyikan dari mesin pencari -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="googlebot" content="noindex, nofollow">
     <meta property="og:title" content="DxtaPremi - Sistem Pencatatan Premi Pekerja">
     <meta property="og:description"
         content="Sistem pencatatan premi pekerja kelapa sawit yang cepat, akurat, dan mudah digunakan.">
@@ -35,7 +38,78 @@
 </head>
 
 <body>
-    <div class="app-container">
+
+    <!-- ==========================================
+         AUTH GATE: Layar Login Wajib
+         Menutupi seluruh konten sebelum login
+    =========================================== -->
+    <div id="auth-gate" class="auth-gate-overlay">
+        <div class="auth-gate-bg">
+            <div class="auth-gate-orb auth-gate-orb-1"></div>
+            <div class="auth-gate-orb auth-gate-orb-2"></div>
+            <div class="auth-gate-orb auth-gate-orb-3"></div>
+        </div>
+        <div class="auth-gate-card">
+            <!-- Logo -->
+            <div class="auth-gate-logo">
+                <div class="auth-gate-logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 3-4-7-4 7-6-3z"/></svg>
+                </div>
+                <div class="auth-gate-logo-text">
+                    <h1>Dxta<span>Premi</span></h1>
+                    <p>Sistem Pencatatan Premi Pekerja Sawit</p>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="auth-gate-divider"></div>
+
+            <!-- Lock Icon + Title -->
+            <div class="auth-gate-lock">
+                <div class="auth-gate-lock-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div>
+                    <p class="auth-gate-lock-title">Akses Terbatas</p>
+                    <p class="auth-gate-lock-sub">Silakan masuk dengan akun Anda</p>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="auth-gate-form" autocomplete="off" novalidate>
+                <div class="auth-gate-field">
+                    <label for="auth-gate-email">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        Email
+                    </label>
+                    <input type="email" id="auth-gate-email" placeholder="Masukkan email Anda..." autocomplete="username" required>
+                </div>
+                <div class="auth-gate-field">
+                    <label for="auth-gate-password">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Password
+                    </label>
+                    <div class="auth-gate-pass-wrap">
+                        <input type="password" id="auth-gate-password" placeholder="Masukkan password..." autocomplete="current-password" required>
+                        <button type="button" id="auth-gate-toggle-pass" class="auth-gate-eye" title="Tampilkan password">
+                            <svg id="auth-gate-eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <p id="auth-gate-error" class="auth-gate-error hidden"></p>
+                <button type="submit" id="auth-gate-submit" class="auth-gate-btn">
+                    <span id="auth-gate-btn-text">Masuk ke DxtaPremi</span>
+                    <svg id="auth-gate-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <svg id="auth-gate-spinner" class="auth-gate-spin hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <p class="auth-gate-footer">Hanya akun yang terdaftar yang dapat mengakses sistem ini.</p>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display:none;">
         <!-- Header -->
         <header class="app-header">
             <div class="logo-area">
